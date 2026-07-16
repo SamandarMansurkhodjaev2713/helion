@@ -2,9 +2,10 @@ import { useEffect } from 'react'
 import Lenis from 'lenis'
 import { I18nProvider } from './i18n'
 import { useReducedMotion } from './lib/hooks'
+import FilmLeader from './components/FilmLeader'
 import HudCursor from './components/HudCursor'
 import StarField from './components/StarField'
-import Nav from './components/Nav'
+import CinemaChrome from './components/CinemaChrome'
 import ScrollyHero from './components/ScrollyHero'
 import StaticHero from './components/StaticHero'
 import Missions from './components/sections/Missions'
@@ -39,9 +40,10 @@ export default function App() {
 
   return (
     <I18nProvider>
+      <FilmLeader />
       <HudCursor />
       <StarField />
-      <Nav />
+      <CinemaChrome />
 
       <main className="relative z-10">
         {reducedMotion ? <StaticHero /> : <ScrollyHero />}

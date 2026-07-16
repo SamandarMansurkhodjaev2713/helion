@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { Milestone } from '../../i18n/types'
 import { SECTION_ID } from '../../lib/constants'
-import { usePinProgress, useReducedMotion } from '../../lib/hooks'
+import { useMediaQuery, usePinProgress, useReducedMotion } from '../../lib/hooks'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
 
 function MilestonePanel({ milestone, index }: { milestone: Milestone; index: number }) {
   return (
-    <article className="flex w-[82vw] shrink-0 flex-col justify-center sm:w-[58vw] md:w-[42vw] lg:w-[34vw]">
+    <article className="flex w-[58vw] shrink-0 flex-col justify-center md:w-[42vw] lg:w-[34vw]">
       {/* Node on the trajectory line */}
       <div className="flex items-center gap-4">
         <span className="relative flex h-3 w-3 items-center justify-center">
@@ -25,11 +25,11 @@ function MilestonePanel({ milestone, index }: { milestone: Milestone; index: num
         <span className="font-mono text-xs uppercase tracking-[0.2em] text-accent/70">
           {milestone.phase}
         </span>
-        <h3 className="mt-3 font-display text-xl font-medium leading-snug tracking-[0.01em] text-bone md:text-2xl">
+        <h3 className="mt-3 text-lg font-extralight uppercase leading-snug tracking-cine text-bone md:text-2xl">
           {milestone.title}
         </h3>
         <p className="mt-4 max-w-sm text-sm leading-relaxed text-bone/60">{milestone.body}</p>
-        <span className="mt-6 block font-display text-5xl font-semibold text-white/[0.05]">
+        <span className="mt-6 block font-mono text-5xl font-light tabular-nums text-white/[0.05]">
           0{index + 1}
         </span>
       </div>
@@ -37,10 +37,10 @@ function MilestonePanel({ milestone, index }: { milestone: Milestone; index: num
   )
 }
 
-/** Reduced-motion / fallback: a plain vertical timeline with no pinning. */
+/** Narrow / reduced-motion variant: a plain vertical timeline, no pinning. */
 function VerticalRoute({ milestones }: { milestones: Milestone[] }) {
   return (
-    <ol className="mt-16 space-y-12 border-l border-white/10 pl-8">
+    <ol className="mt-14 space-y-12 border-l border-white/10 pl-8">
       {milestones.map((milestone, index) => (
         <Reveal as="li" key={milestone.phase} variant="rise" delay={index * 80} className="relative">
           <span className="absolute -left-[41px] top-1.5 h-3 w-3 rounded-full border border-accent/50 bg-void">
@@ -54,8 +54,10 @@ function VerticalRoute({ milestones }: { milestones: Milestone[] }) {
               {milestone.date}
             </span>
           </div>
-          <h3 className="mt-2 font-display text-lg font-medium text-bone">{milestone.title}</h3>
-          <p className="mt-2 max-w-lg text-sm leading-relaxed text-bone/60">{milestone.body}</p>
+          <h3 className="mt-2.5 text-lg font-extralight uppercase leading-snug tracking-cine text-bone">
+            {milestone.title}
+          </h3>
+          <p className="mt-2.5 max-w-lg text-sm leading-relaxed text-bone/60">{milestone.body}</p>
         </Reveal>
       ))}
     </ol>
@@ -65,17 +67,19 @@ function VerticalRoute({ milestones }: { milestones: Milestone[] }) {
 export default function Route() {
   const { t } = useI18n()
   const reduced = useReducedMotion()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const milestones = t.route.milestones
+  const pinned = !reduced && !narrow
 
-  const [pinRef, progress] = usePinProgress<HTMLDivElement>(!reduced)
+  const [pinRef, progress] = usePinProgress<HTMLDivElement>(pinned)
   const trackRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [maxShift, setMaxShift] = useState(0)
 
   // Measure the overflow distance the horizontal track must travel. Recomputed
-  // on resize and whenever the content (locale) changes.
+  // on resize, font load, and whenever the content (locale) changes.
   useEffect(() => {
-    if (reduced) return
+    if (!pinned) return
     let cancelled = false
     const measure = () => {
       if (cancelled) return
@@ -85,18 +89,18 @@ export default function Route() {
       setMaxShift(Math.max(0, track.scrollWidth - viewport.clientWidth))
     }
     measure()
-    // Web fonts load async; re-measure once they swap in so the track width is exact.
+    // Web fonts load async; re-measure once they swap in so the width is exact.
     document.fonts?.ready.then(measure).catch(() => {})
     window.addEventListener('resize', measure)
     return () => {
       cancelled = true
       window.removeEventListener('resize', measure)
     }
-  }, [reduced, milestones])
+  }, [pinned, milestones])
 
-  if (reduced) {
+  if (!pinned) {
     return (
-      <section id={SECTION_ID.route} className="mx-auto max-w-4xl px-6 py-28 md:px-10">
+      <section id={SECTION_ID.route} className="mx-auto max-w-4xl px-5 py-28 md:px-10">
         <SectionHeading
           eyebrow={t.route.eyebrow}
           title={t.route.title}
@@ -116,7 +120,7 @@ export default function Route() {
       <div ref={pinRef} className="h-[380vh]">
         <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
           {/* Header + progress readout */}
-          <div className="mx-auto flex w-full max-w-7xl items-end justify-between px-6 pt-28 md:px-10 md:pt-32">
+          <div className="mx-auto flex w-full max-w-7xl items-end justify-between px-5 pt-28 md:px-10 md:pt-32">
             <SectionHeading
               eyebrow={t.route.eyebrow}
               title={t.route.title}
@@ -124,19 +128,11 @@ export default function Route() {
               intro={t.route.intro}
               className="max-w-xl"
             />
-            <div className="hidden shrink-0 text-right md:block">
+            <div className="hidden shrink-0 pb-1 text-right md:block">
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-steel">
                 {t.route.progressLabel}
               </span>
-              <div className="mt-2 flex items-center gap-3">
-                <div className="h-px w-40 bg-white/10">
-                  <div
-                    className="h-full bg-accent"
-                    style={{ width: `${shiftPct}%` }}
-                  />
-                </div>
-                <span className="font-mono text-xs tabular-nums text-accent">{shiftPct}%</span>
-              </div>
+              <div className="mt-2 font-mono text-2xl tabular-nums text-accent">{shiftPct}%</div>
             </div>
           </div>
 
@@ -144,7 +140,7 @@ export default function Route() {
           <div ref={viewportRef} className="relative flex flex-1 items-center overflow-hidden">
             <div
               ref={trackRef}
-              className="flex gap-[8vw] px-6 will-change-transform md:px-10"
+              className="flex gap-[8vw] px-5 will-change-transform md:px-10"
               style={{ transform: `translate3d(${-progress * maxShift}px, 0, 0)` }}
             >
               {milestones.map((milestone, index) => (
@@ -153,11 +149,25 @@ export default function Route() {
             </div>
           </div>
 
-          {/* Scroll hint */}
-          <div className="mx-auto w-full max-w-7xl px-6 pb-10 md:px-10">
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-bone/35">
-              {t.route.scrollHint} ↓
-            </span>
+          {/* Full-width trajectory line: a craft marker travels with progress */}
+          <div className="mx-auto w-full max-w-7xl px-5 pb-16 md:px-10">
+            <div className="relative h-px w-full bg-white/10">
+              <div
+                className="absolute left-0 top-0 h-full bg-accent/60"
+                style={{ width: `${progress * 100}%` }}
+              />
+              <span
+                aria-hidden
+                className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-accent"
+                style={{ left: `${progress * 100}%` }}
+              />
+            </div>
+            <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-bone/35">
+              <span>{t.route.scrollHint} ↓</span>
+              <span className="tabular-nums">
+                {milestones[Math.min(milestones.length - 1, Math.floor(progress * milestones.length))]?.date}
+              </span>
+            </div>
           </div>
         </div>
       </div>

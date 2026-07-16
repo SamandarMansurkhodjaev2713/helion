@@ -58,6 +58,7 @@ export interface Dictionary {
     fleet: string
     route: string
     crew: string
+    contact: string
     cta: string
     /** Accessible label for the language switch. */
     languageLabel: string
@@ -67,6 +68,33 @@ export interface Dictionary {
   telemetry: {
     status: string
     phaseLabel: string
+  }
+  /** Labels of the fixed letterbox chrome (top/bottom cinema bars). */
+  chrome: {
+    menu: string
+    close: string
+  }
+  /** Scene captions shown in the bottom cinema bar per active section. */
+  scenes: {
+    hero: string
+    missions: string
+    fleet: string
+    route: string
+    crew: string
+    contact: string
+  }
+  /** One-line descriptions under the full-screen menu items. */
+  menuCaptions: {
+    missions: string
+    fleet: string
+    route: string
+    crew: string
+    contact: string
+  }
+  /** Opening film-leader countdown overlay. */
+  leader: {
+    program: string
+    skip: string
   }
   hero: {
     titleLine1: string

@@ -44,12 +44,14 @@ bone #ECE6DA (текст) · ash #8B8578 (мета)
 В компонентах — `bg-void`, `text-accent`, `text-steel` и т.д. В canvas — чтение через
 `getComputedStyle(...).getPropertyValue('--accent')`. Новый цвет → добавить в оба файла.
 
-## ТИПОГРАФИКА
+## ТИПОГРАФИКА — «кино-титры», отдельного display-шрифта НЕТ
 
-- **Unbounded** (500–700) — display: акцент-строки заголовков (uppercase, ~0.52em от
-  первой строки — оптическая компенсация ширины), вордмарк, названия. Без italic.
+- **Inter 200 (extralight) + UPPERCASE + широкий трекинг** — все заголовки/названия
+  (постеры Interstellar/Dune). Токены трекинга: `tracking-cine` (0.16em),
+  `tracking-cinewide` (0.3em), точечно arbitrary `[0.18em]`–`[0.2em]`.
+  Ключевая фраза заголовка — `text-accent`, тем же начертанием. Никаких italic/жирных.
 - **Inter** — весь текст (`font-sans`).
-- **JetBrains Mono** — телеметрия, eyebrows, теги и **все цифры/статы**
+- **JetBrains Mono** — телеметрия, eyebrows, теги, таймкод и **все цифры/статы**
   (`font-mono`, uppercase, широкий tracking, `tabular-nums`).
 
 ## ДВИЖЕНИЕ
@@ -62,19 +64,25 @@ bone #ECE6DA (текст) · ash #8B8578 (мета)
 `prefers-reduced-motion` уважать всегда: статический хиро, canvas и курсор off,
 мгновенные появления.
 
-## АРХИТЕКТУРА СЕКЦИЙ
+## АРХИТЕКТУРА — направление «КИНО-КАДР»
+
+Сайт стилизован под фильм: letterbox-хром, таймкод, титры. Секции:
 
 ```
-hero      scroll-scrub видео (ScrollyHero) / статичный fallback (StaticHero)
-missions  экспедиции — 3D-tilt карточки
-fleet     флот — интерактивный селектор + count-up характеристик
-route     маршрут — горизонтальный pinned-таймлайн
-crew      экипаж — hover-раскрытие
-contact   финал — «восход планеты» + Telegram/email CTA
+hero      scroll-scrub видео; на мобиле — кино-рамка с зум-ином (scale .85→1)
+missions  леджер-досье: полноширинные строки с аккордеон-раскрытием
+fleet     тех-лист: подчёркнутые табы + hairline-таблица + схема в TiltCard
+route     desktop — pinned горизонтальный таймлайн + линия-траектория;
+          mobile/reduced — вертикальный список
+crew      «титры»: редакторские строки (имя/роль/био), без карточек
+contact   финал — «восход планеты» + CineButton CTA
 ```
 
-Поверх всего: `Nav` (телеметрия + переключатель языка), `HudCursor`, `StarField` (фон),
-`Footer`.
+Поверх всего: `FilmLeader` (каунтдаун 3-2-1 при входе, once/session, skippable),
+`CinemaChrome` (верхний бар: вордмарк+телеметрия+язык+MENU; нижний бар: сцена SC.0X +
+SMPTE-таймкод от скролла + REC; полноэкранное меню на всех устройствах),
+`HudCursor`, `StarField`, `Footer`. Кнопки — только `CineButton` (bracket/solid),
+никаких rounded-пилюль.
 
 ## ПРАВИЛА КОДА
 

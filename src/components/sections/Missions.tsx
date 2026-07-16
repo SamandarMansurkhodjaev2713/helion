@@ -1,41 +1,40 @@
-import { ArrowUpRight } from 'lucide-react'
+import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { MissionItem, MissionStatus } from '../../i18n/types'
 import { SECTION_ID } from '../../lib/constants'
 import SectionShell from '../primitives/SectionShell'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
-import TiltCard from '../primitives/TiltCard'
 
-/** Editorial vertical offset per column so the row reads as a composed spread. */
-const COLUMN_OFFSET = ['lg:mt-16', 'lg:mt-0', 'lg:mt-24']
-
-function StatusPill({ status, label }: { status: MissionStatus; label: string }) {
+function StatusMark({ status, label }: { status: MissionStatus; label: string }) {
   const tone: Record<MissionStatus, string> = {
-    active: 'border-accent/40 text-accent',
-    returned: 'border-steel/40 text-steel',
-    planned: 'border-white/15 text-bone/50',
+    active: 'text-accent',
+    returned: 'text-steel',
+    planned: 'text-bone/45',
   }
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] ${tone[status]}`}
+      className={`inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] ${tone[status]}`}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          status === 'active' ? 'animate-pulse bg-accent' : 'bg-current'
-        }`}
+        aria-hidden
+        className={`h-1.5 w-1.5 rounded-full ${status === 'active' ? 'animate-pulse bg-accent' : 'bg-current'}`}
       />
       {label}
     </span>
   )
 }
 
-function MissionCard({
+function MissionRow({
   mission,
   index,
+  open,
+  onToggle,
 }: {
   mission: MissionItem
   index: number
+  open: boolean
+  onToggle: () => void
 }) {
   const { t } = useI18n()
   const statusLabel: Record<MissionStatus, string> = {
@@ -48,73 +47,111 @@ function MissionCard({
     { value: mission.duration, label: t.missions.labelDuration },
     { value: mission.crew, label: t.missions.labelCrew },
   ]
+  const panelId = `mission-panel-${mission.code}`
 
   return (
-    <Reveal variant="rise" delay={index * 120} className={COLUMN_OFFSET[index] ?? ''}>
-      <TiltCard cursorLabel={t.missions.viewDossier} className="h-full">
-        <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/60 p-6 backdrop-blur-sm transition-colors duration-500 hover:border-accent/30">
-          {/* Faint index watermark */}
-          <span className="pointer-events-none absolute -right-2 -top-4 font-display text-[5.5rem] font-semibold leading-none text-white/[0.03]">
-            {index + 1}
+    <Reveal variant="clip" delay={index * 100}>
+      <div className="border-b border-white/10">
+        {/* Ledger row — the whole line is the toggle */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={panelId}
+          data-cursor="link"
+          data-cursor-label={t.missions.viewDossier}
+          className="group grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-5 py-6 text-left md:grid-cols-[90px_1fr_auto_36px] md:gap-x-8 md:py-9"
+        >
+          <span
+            className={`font-mono text-2xl font-light tabular-nums transition-colors duration-500 md:text-4xl ${
+              open ? 'text-accent' : 'text-bone/25 group-hover:text-accent/70'
+            }`}
+          >
+            0{index + 1}
           </span>
 
-          <header className="flex items-center justify-between">
-            <span className="font-mono text-xs tracking-[0.2em] text-steel">{mission.code}</span>
-            <StatusPill status={mission.status} label={statusLabel[mission.status]} />
-          </header>
+          <span className="min-w-0">
+            <span className="block font-mono text-[10px] uppercase tracking-[0.2em] text-steel">
+              {mission.code}
+            </span>
+            <span className="mt-1.5 block text-lg font-extralight uppercase leading-snug tracking-cine text-bone transition-colors duration-300 group-hover:text-accent md:text-3xl">
+              {mission.name}
+            </span>
+          </span>
 
-          <h3 className="mt-6 font-display text-xl font-medium leading-snug tracking-[0.01em] text-bone">
-            {mission.name}
-          </h3>
+          <StatusMark status={mission.status} label={statusLabel[mission.status]} />
 
-          <p className="mt-3 flex-1 text-sm leading-relaxed text-bone/60">{mission.summary}</p>
-
-          <div className="hairline my-6" />
-
-          <dl className="grid grid-cols-3 gap-2">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <dt className="font-mono text-[10px] uppercase tracking-wide text-bone/40">
-                  {stat.label}
-                </dt>
-                <dd className="mt-1 font-mono text-base font-medium tracking-tight text-bone">
-                  {stat.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-
-          <span className="mt-6 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-bone/50 transition-colors duration-300 group-hover:text-accent">
-            {t.missions.viewDossier}
-            <ArrowUpRight
-              size={14}
-              className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+          {/* Plus → minus indicator */}
+          <span className="relative hidden h-3 w-3 justify-self-end md:block" aria-hidden>
+            <span className="absolute left-0 top-1/2 h-px w-3 bg-bone/40 transition-colors duration-300 group-hover:bg-accent" />
+            <span
+              className={`absolute left-1/2 top-0 h-3 w-px bg-bone/40 transition-all duration-500 ease-cinematic group-hover:bg-accent ${
+                open ? 'rotate-90 opacity-0' : ''
+              }`}
             />
           </span>
-        </article>
-      </TiltCard>
+        </button>
+
+        {/* Expanding dossier */}
+        <div
+          id={panelId}
+          className="grid transition-[grid-template-rows] duration-700 ease-cinematic"
+          style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="grid gap-6 pb-8 md:grid-cols-[90px_1fr_auto] md:gap-x-8 md:pb-11">
+              <span aria-hidden className="hidden md:block" />
+              <p className="max-w-[52ch] text-sm leading-relaxed text-bone/60">
+                {mission.summary}
+              </p>
+              <dl className="flex gap-8 md:gap-10 md:self-end">
+                {stats.map((stat) => (
+                  <div key={stat.label}>
+                    <dt className="font-mono text-[10px] uppercase tracking-wide text-bone/40">
+                      {stat.label}
+                    </dt>
+                    <dd className="mt-1 font-mono text-base font-medium tracking-tight text-bone">
+                      {stat.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
     </Reveal>
   )
 }
 
 export default function Missions() {
   const { t } = useI18n()
+  // The flagship mission starts unfolded so the section never reads empty.
+  const [openCode, setOpenCode] = useState<string | null>(t.missions.items[0]?.code ?? null)
+
   return (
     <SectionShell
       id={SECTION_ID.missions}
       atmosphere="accent"
-      className="mx-auto max-w-7xl px-6 py-28 md:px-10 md:py-40"
+      className="mx-auto max-w-7xl px-5 py-28 md:px-10 md:py-44"
     >
       <SectionHeading
         eyebrow={t.missions.eyebrow}
         title={t.missions.title}
         titleEmphasis={t.missions.titleEmphasis}
         intro={t.missions.intro}
+        className="mb-14 md:mb-20"
       />
 
-      <div className="mt-16 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 lg:items-start">
+      <div className="border-t border-white/10">
         {t.missions.items.map((mission, index) => (
-          <MissionCard key={mission.code} mission={mission} index={index} />
+          <MissionRow
+            key={mission.code}
+            mission={mission}
+            index={index}
+            open={openCode === mission.code}
+            onToggle={() => setOpenCode(openCode === mission.code ? null : mission.code)}
+          />
         ))}
       </div>
     </SectionShell>

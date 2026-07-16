@@ -11,9 +11,10 @@ interface SectionHeadingProps {
 }
 
 /**
- * The shared section header: a mono eyebrow, a two-line title — a light sans
- * line followed by the wide display line in the cold accent — and a lead
- * paragraph. Each part enters with a staggered cinematic focus-pull.
+ * The shared section header, styled as a film title card: a mono slate line,
+ * one ultra-light uppercase tracked title with the key phrase in the cold
+ * accent, a hairline rule that wipes in, then the lead paragraph. Each part
+ * enters with a staggered cinematic reveal.
  */
 export default function SectionHeading({
   eyebrow,
@@ -23,30 +24,32 @@ export default function SectionHeading({
   align = 'left',
   className = '',
 }: SectionHeadingProps) {
-  const alignment =
-    align === 'center' ? 'items-center text-center' : 'items-start text-left'
+  const centered = align === 'center'
 
   return (
-    <div className={`flex flex-col ${alignment} ${className}`}>
+    <div
+      className={`flex flex-col ${centered ? 'items-center text-center' : 'items-start text-left'} ${className}`}
+    >
       <Reveal variant="fade" duration={700}>
-        <span className="font-mono text-[11px] uppercase tracking-telemetry text-steel md:text-xs">
+        <span className="font-mono text-[10px] uppercase tracking-telemetry text-steel md:text-[11px]">
           {eyebrow}
         </span>
       </Reveal>
 
-      <Reveal variant="focus" delay={90} className="mt-5">
-        <h2 className="max-w-[18ch] text-4xl font-light leading-[1.05] tracking-[-0.02em] text-bone sm:text-5xl md:text-6xl">
-          {title}
-          <span className="mt-3 block font-display text-[0.52em] font-medium uppercase leading-[1.2] tracking-[0.06em] text-accent">
-            {titleEmphasis}
-          </span>
+      <Reveal variant="focus" delay={90} className="mt-5 md:mt-7">
+        <h2 className="max-w-[26ch] text-[26px] font-extralight uppercase leading-[1.4] tracking-cine text-bone sm:text-4xl md:text-5xl md:tracking-[0.18em]">
+          {title} <span className="text-accent">{titleEmphasis}</span>
         </h2>
       </Reveal>
 
-      <Reveal variant="rise" delay={200} className="mt-6">
+      <Reveal variant="clip" delay={190} duration={800} className="mt-7 w-full max-w-md">
+        <div className="hairline" />
+      </Reveal>
+
+      <Reveal variant="rise" delay={260} className="mt-6">
         <p
-          className={`max-w-[46ch] text-base leading-relaxed text-bone/60 md:text-lg ${
-            align === 'center' ? 'mx-auto' : ''
+          className={`max-w-[52ch] text-sm leading-relaxed text-bone/60 md:text-base ${
+            centered ? 'mx-auto' : ''
           }`}
         >
           {intro}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -122,6 +122,48 @@ html.lenis body {
     rgba(139, 133, 121, 0.4),
     transparent
   );
+}
+
+/* Anchor targets stop below the fixed top cinema bar */
+section[id],
+div[id] {
+  scroll-margin-top: 3.5rem;
+}
+
+/* Film-leader countdown: number pop-in */
+@keyframes leader-num {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Bottom-bar scene caption swap on section change */
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll-hint: droplet running down a thin line */
+@keyframes hint-drip {
+  0% {
+    transform: translateY(-14px);
+  }
+  100% {
+    transform: translateY(26px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

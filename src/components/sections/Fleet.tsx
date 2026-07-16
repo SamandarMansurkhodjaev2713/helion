@@ -7,6 +7,7 @@ import { useInView, useReducedMotion } from '../../lib/hooks'
 import SectionShell from '../primitives/SectionShell'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
+import TiltCard from '../primitives/TiltCard'
 
 const COUNT_DURATION = 850
 /** One reused tabpanel is swapped between ships, so every tab points at this
@@ -49,18 +50,18 @@ function SpecRow({ spec, play, delay }: { spec: ShipSpec; play: boolean; delay: 
   const value = useCountUp(spec.value, play, reduced)
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between">
+    <div className="border-b border-white/10 pb-3">
+      <div className="flex items-baseline justify-between gap-6">
         <span className="font-mono text-[11px] uppercase tracking-[0.15em] text-bone/45">
           {spec.label}
         </span>
         <span className="font-mono text-xl font-medium tabular-nums tracking-tight text-bone">
           {value}
-          <span className="ml-1 font-sans text-xs font-normal text-steel">{spec.unit}</span>
+          <span className="ml-1.5 font-sans text-xs font-normal text-steel">{spec.unit}</span>
         </span>
       </div>
       {/* Bar sweeps in once the spec is in view */}
-      <div className="mt-2 h-px w-full overflow-hidden bg-white/10">
+      <div className="mt-2.5 h-px w-full overflow-hidden bg-white/10">
         <div
           className="h-full bg-gradient-to-r from-accent to-accent/20 transition-transform duration-1000 ease-cinematic"
           style={{
@@ -73,7 +74,7 @@ function SpecRow({ spec, play, delay }: { spec: ShipSpec; play: boolean; delay: 
   )
 }
 
-/** Decorative orbital schematic that fades/scales in whenever the ship changes. */
+/** Decorative orbital schematic that drifts slowly; re-keyed per ship change. */
 function ShipSchematic({ shipId }: { shipId: string }) {
   const reduced = useReducedMotion()
   return (
@@ -99,21 +100,32 @@ function ShipSchematic({ shipId }: { shipId: string }) {
   )
 }
 
+/** Corner tick of the schematic instrument frame. */
+function InstrumentTick({ position }: { position: string }) {
+  const edges = [
+    position.includes('top') ? 'border-t' : 'border-b',
+    position.includes('left') ? 'border-l' : 'border-r',
+  ].join(' ')
+  return <span aria-hidden className={`absolute ${position} h-2.5 w-2.5 ${edges} border-accent/50`} />
+}
+
 function ShipDetail({ ship }: { ship: ShipItem }) {
   const [ref, inView] = useInView<HTMLDivElement>({ once: true, threshold: 0.3 })
 
   return (
-    <div ref={ref} className="relative grid gap-10 md:grid-cols-[1fr_auto] md:items-center">
+    <div ref={ref} className="relative grid gap-10 md:grid-cols-[1fr_auto] md:items-center md:gap-16">
       {/* Re-key on ship change so text re-enters with a focus pull */}
       <div key={ship.id}>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-steel">{ship.klass}</p>
-        <h3 className="mt-3 font-display text-2xl font-medium uppercase tracking-[0.04em] text-bone md:text-3xl">
+        <h3 className="mt-3 text-2xl font-extralight uppercase tracking-cine text-bone md:text-4xl">
           {ship.name}
         </h3>
-        <p className="mt-2 text-sm text-accent/80">{ship.role}</p>
+        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent/80">
+          {ship.role}
+        </p>
         <p className="mt-5 max-w-md text-sm leading-relaxed text-bone/60">{ship.description}</p>
 
-        <div className="mt-8 grid grid-cols-2 gap-x-10 gap-y-6">
+        <div className="mt-9 grid grid-cols-1 gap-x-12 gap-y-5 sm:grid-cols-2">
           {ship.specs.map((spec, index) => (
             <SpecRow
               key={`${ship.id}-${spec.label}`}
@@ -125,15 +137,22 @@ function ShipDetail({ ship }: { ship: ShipItem }) {
         </div>
       </div>
 
-      <div className="mx-auto aspect-square w-48 text-steel md:w-60">
-        <ShipSchematic shipId={ship.id} />
-      </div>
+      {/* Orbital schematic in a ticked instrument frame */}
+      <TiltCard className="mx-auto w-52 md:w-64">
+        <div className="relative aspect-square border border-white/10 p-5 text-steel">
+          <InstrumentTick position="-left-px -top-px" />
+          <InstrumentTick position="-right-px -top-px" />
+          <InstrumentTick position="-left-px -bottom-px" />
+          <InstrumentTick position="-right-px -bottom-px" />
+          <ShipSchematic shipId={ship.id} />
+        </div>
+      </TiltCard>
     </div>
   )
 }
 
 /** WAI-ARIA tablist for the fleet: roving tabindex + arrow/Home/End keyboard nav,
- *  each tab wired to its panel via aria-controls. */
+ *  each tab wired to the shared panel via aria-controls. */
 function ShipTabs({
   ships,
   activeId,
@@ -177,9 +196,9 @@ function ShipTabs({
     <div
       role="tablist"
       aria-label={label}
-      aria-orientation="vertical"
+      aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
-      className="flex gap-3 overflow-x-auto pb-2 lg:flex-col lg:gap-2 lg:overflow-visible lg:border-l lg:border-white/10"
+      className="flex gap-8 overflow-x-auto border-b border-white/10 md:gap-12"
     >
       {ships.map((ship, index) => {
         const isActive = ship.id === activeId
@@ -196,16 +215,22 @@ function ShipTabs({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(ship.id)}
             data-cursor="link"
-            className={`group relative shrink-0 rounded-xl px-4 py-3 text-left transition-colors duration-300 lg:rounded-none lg:border-l-2 lg:pl-5 ${
-              isActive
-                ? 'bg-white/5 text-bone lg:-ml-px lg:border-accent lg:bg-transparent'
-                : 'text-bone/45 hover:text-bone/80 lg:border-transparent'
+            className={`group relative shrink-0 pb-4 text-left transition-colors duration-300 ${
+              isActive ? 'text-bone' : 'text-bone/40 hover:text-bone/75'
             }`}
           >
             <span className="block font-mono text-[10px] tracking-[0.2em] text-steel">
               0{index + 1}
             </span>
-            <span className="mt-1 block text-lg font-light">{ship.name}</span>
+            <span className="mt-1 block text-base font-extralight uppercase tracking-cine md:text-lg">
+              {ship.name}
+            </span>
+            <span
+              aria-hidden
+              className={`absolute -bottom-px left-0 h-px w-full origin-left bg-accent transition-transform duration-500 ease-cinematic ${
+                isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'
+              }`}
+            />
           </button>
         )
       })}
@@ -223,34 +248,32 @@ export default function Fleet() {
     <SectionShell
       id={SECTION_ID.fleet}
       atmosphere="steel"
-      className="mx-auto max-w-7xl px-6 py-28 md:px-10 md:py-40"
+      className="mx-auto max-w-7xl px-5 py-28 md:px-10 md:py-44"
     >
       <SectionHeading
         eyebrow={t.fleet.eyebrow}
         title={t.fleet.title}
         titleEmphasis={t.fleet.titleEmphasis}
         intro={t.fleet.intro}
+        className="mb-14 md:mb-20"
       />
 
-      <Reveal variant="rise" delay={120} className="mt-14">
-        <div className="grid gap-10 lg:grid-cols-[260px_1fr] lg:gap-16">
-          {/* Ship selector — horizontal scroll on mobile, vertical list on desktop */}
-          <ShipTabs
-            ships={ships}
-            activeId={activeId}
-            onSelect={setActiveId}
-            label={t.fleet.selectHint}
-          />
+      <Reveal variant="rise" delay={120}>
+        <ShipTabs
+          ships={ships}
+          activeId={activeId}
+          onSelect={setActiveId}
+          label={t.fleet.selectHint}
+        />
 
-          <div
-            id={PANEL_ID}
-            role="tabpanel"
-            aria-labelledby={`fleet-tab-${activeShip.id}`}
-            tabIndex={0}
-            className="rounded-2xl border border-white/10 bg-panel/40 p-6 backdrop-blur-sm focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:p-10"
-          >
-            <ShipDetail ship={activeShip} />
-          </div>
+        <div
+          id={PANEL_ID}
+          role="tabpanel"
+          aria-labelledby={`fleet-tab-${activeShip.id}`}
+          tabIndex={0}
+          className="pt-10 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:pt-14"
+        >
+          <ShipDetail ship={activeShip} />
         </div>
       </Reveal>
     </SectionShell>

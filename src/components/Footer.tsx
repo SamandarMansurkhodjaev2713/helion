@@ -2,6 +2,8 @@ import { ArrowUp } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { CONTACT, NAV_SECTIONS, SECTION_ID } from '../lib/constants'
 
+/** End credits: a quiet mono footer framed by hairlines, sitting above the
+ *  fixed bottom cinema bar (hence the extra bottom padding). */
 export default function Footer() {
   const { t } = useI18n()
   const labels: Record<string, string> = {
@@ -12,14 +14,14 @@ export default function Footer() {
   }
 
   return (
-    <footer className="relative border-t border-white/10 bg-void/80 px-6 py-16 md:px-10">
+    <footer className="relative border-t border-white/10 bg-void px-5 pb-24 pt-16 md:px-10 md:pt-20">
       <div className="mx-auto flex max-w-7xl flex-col gap-12">
         <div className="flex flex-col justify-between gap-10 md:flex-row md:items-start">
           <div className="max-w-sm">
             <a
               href={`#${SECTION_ID.hero}`}
               data-cursor="link"
-              className="font-display text-lg font-semibold uppercase tracking-[0.22em] text-bone transition-colors duration-300 hover:text-accent"
+              className="text-lg font-extralight uppercase tracking-cinewide text-bone transition-colors duration-300 hover:text-accent"
             >
               Helion
             </a>
@@ -32,7 +34,7 @@ export default function Footer() {
                 key={id}
                 href={`#${id}`}
                 data-cursor="link"
-                className="text-sm text-bone/55 transition-colors duration-300 hover:text-accent"
+                className="font-mono text-[11px] uppercase tracking-[0.18em] text-bone/55 transition-colors duration-300 hover:text-accent"
               >
                 {labels[id]}
               </a>
@@ -43,18 +45,18 @@ export default function Footer() {
             href={`#${SECTION_ID.hero}`}
             data-cursor="link"
             data-cursor-label={t.footer.backToTop}
-            className="group inline-flex items-center gap-2 self-start text-sm text-bone/55 transition-colors duration-300 hover:text-bone"
+            className="group inline-flex items-center gap-3 self-start font-mono text-[11px] uppercase tracking-[0.18em] text-bone/55 transition-colors duration-300 hover:text-bone"
           >
             {t.footer.backToTop}
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 transition-transform duration-300 group-hover:-translate-y-0.5">
-              <ArrowUp size={14} />
+            <span className="flex h-8 w-8 items-center justify-center border border-white/15 transition-transform duration-300 group-hover:-translate-y-0.5">
+              <ArrowUp size={13} />
             </span>
           </a>
         </div>
 
         <div className="hairline" />
 
-        <div className="flex flex-col gap-2 font-mono text-[11px] uppercase tracking-[0.15em] text-bone/35 md:flex-row md:justify-between">
+        <div className="flex flex-col gap-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-bone/35 md:flex-row md:justify-between">
           <span>{t.footer.rights}</span>
           <a
             href={CONTACT.githubUrl}

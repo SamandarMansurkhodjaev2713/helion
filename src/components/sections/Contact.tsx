@@ -4,9 +4,9 @@ import { CONTACT, SECTION_ID } from '../../lib/constants'
 import { mapRange } from '../../lib/easing'
 import { useReducedMotion, useViewportProgress } from '../../lib/hooks'
 import Reveal from '../primitives/Reveal'
-import MagneticButton from '../primitives/MagneticButton'
+import CineButton from '../primitives/CineButton'
 
-/** The rising planet limb — a large arc with a warm rim light that parallaxes
+/** The rising planet limb — a large arc with a cold rim light that parallaxes
  *  up as the section enters, giving the finale a "horizon reveal". */
 function PlanetHorizon({ progress, reduced }: { progress: number; reduced: boolean }) {
   const rise = reduced ? 0 : mapRange(progress, 0, 1, 220, -40)
@@ -36,71 +36,63 @@ export default function Contact() {
     <section
       ref={ref}
       id={SECTION_ID.contact}
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-32 text-center"
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-36 text-center"
     >
       <PlanetHorizon progress={progress} reduced={reduced} />
 
       <div className="relative z-content mx-auto max-w-3xl">
         <Reveal variant="fade" duration={700}>
-          <span className="font-mono text-[11px] uppercase tracking-telemetry text-steel">
+          <span className="font-mono text-[10px] uppercase tracking-telemetry text-steel md:text-[11px]">
             {t.contact.eyebrow}
           </span>
         </Reveal>
 
-        <Reveal variant="focus" delay={90} className="mt-6">
-          <h2 className="text-4xl font-light leading-[1.06] tracking-[-0.02em] text-bone md:text-6xl">
-            {t.contact.title}
-            <span className="mt-3 block font-display text-[0.52em] font-medium uppercase leading-[1.25] tracking-[0.06em] text-accent">
-              {t.contact.titleEmphasis}
-            </span>
+        <Reveal variant="focus" delay={90} className="mt-7">
+          <h2 className="text-[26px] font-extralight uppercase leading-[1.4] tracking-cine text-bone sm:text-4xl md:text-5xl md:tracking-[0.18em]">
+            {t.contact.title} <span className="text-accent">{t.contact.titleEmphasis}</span>
           </h2>
         </Reveal>
 
         <Reveal variant="rise" delay={200} className="mt-6">
-          <p className="mx-auto max-w-xl text-base leading-relaxed text-bone/65 md:text-lg">
+          <p className="mx-auto max-w-xl text-sm leading-relaxed text-bone/65 md:text-base">
             {t.contact.body}
           </p>
         </Reveal>
 
-        {/* Seats readout */}
-        <Reveal variant="rise" delay={280} className="mt-10">
-          <div className="inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3">
+        {/* Seats slate */}
+        <Reveal variant="rise" delay={280} className="mt-11">
+          <div className="inline-flex items-center gap-4 border border-white/10 bg-white/[0.02] px-6 py-3.5">
             <span className="font-mono text-3xl font-medium tabular-nums text-accent">
               {t.contact.seatsValue}
             </span>
-            <span className="text-left font-mono text-[11px] uppercase leading-tight tracking-[0.15em] text-bone/55">
+            <span className="text-left font-mono text-[10px] uppercase leading-tight tracking-[0.15em] text-bone/55">
               {t.contact.seatsLabel}
             </span>
           </div>
         </Reveal>
 
         {/* CTAs — Telegram primary, email secondary */}
-        <Reveal variant="rise" delay={360} className="mt-10">
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <MagneticButton
+        <Reveal variant="rise" delay={360} className="mt-11">
+          <div className="flex flex-col items-center justify-center gap-5 sm:flex-row sm:gap-7">
+            <CineButton
               href={CONTACT.telegramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              external
+              variant="solid"
               cursorLabel={CONTACT.telegramHandle}
-              className="group items-center gap-3 rounded-full bg-accent px-7 py-3.5 text-sm font-semibold text-void transition-colors duration-300 hover:bg-accent-bright"
             >
-              <Send size={16} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              <Send size={14} aria-hidden />
               {t.contact.telegramCta}
-            </MagneticButton>
+            </CineButton>
 
-            <MagneticButton
-              href={`mailto:${CONTACT.email}`}
-              cursorLabel={CONTACT.email}
-              className="group items-center gap-3 rounded-full border border-white/15 px-7 py-3.5 text-sm font-medium text-bone transition-colors duration-300 hover:border-accent/50 hover:text-accent"
-            >
-              <Mail size={16} />
+            <CineButton href={`mailto:${CONTACT.email}`} cursorLabel={CONTACT.email}>
+              <Mail size={14} aria-hidden />
               {t.contact.emailCta}
-            </MagneticButton>
+            </CineButton>
           </div>
         </Reveal>
 
-        <Reveal variant="fade" delay={460} className="mt-8">
-          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-bone/40">
+        <Reveal variant="fade" delay={460} className="mt-9">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-bone/40 md:text-[11px]">
             {t.contact.channelNote}
           </p>
         </Reveal>

@@ -71,6 +71,21 @@ export const MOTION = {
   tiltMaxDeg: 8,
 } as const
 
+/**
+ * Cinema-frame chrome: the fake film reel the page pretends to be. The scroll
+ * position maps onto this reel to produce the SMPTE-style timecode readout.
+ */
+export const FILM = {
+  /** Frames per second shown in the timecode readout. */
+  fps: 24,
+  /** Length (s) of the imaginary reel the full page scroll maps onto. */
+  reelSeconds: 167,
+  /** How long each number of the opening countdown stays on screen (ms). */
+  leaderStepMs: 650,
+  /** Countdown start value for the opening film leader. */
+  leaderFrom: 3,
+} as const
+
 /** Starfield density and behaviour, split by viewport so mobile stays light. */
 export const STARFIELD = {
   desktopStars: 220,

@@ -25,12 +25,16 @@ export default {
         ash: '#8B8578', // muted meta, captions
       },
       fontFamily: {
+        // Display = the same Inter, used ultra-light + uppercase + wide tracking
+        // (cinema-poster treatment); no separate display family is loaded.
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Unbounded', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       letterSpacing: {
         telemetry: '0.28em',
+        cine: '0.16em', // film-title headings
+        cinewide: '0.3em', // wordmark / hero titles
       },
       transitionTimingFunction: {
         cinematic: 'cubic-bezier(0.16, 1, 0.3, 1)', // fast out, long settle

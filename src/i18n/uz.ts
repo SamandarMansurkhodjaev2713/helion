@@ -12,6 +12,7 @@ export const uz: Dictionary = {
     fleet: 'Flot',
     route: 'Marshrut',
     crew: 'Ekipaj',
+    contact: 'Aloqa',
     cta: 'Joy band qilish',
     languageLabel: 'Til tanlash',
     menuLabel: 'Asosiy navigatsiya',
@@ -19,6 +20,29 @@ export const uz: Dictionary = {
   telemetry: {
     status: 'MISSION ACTIVE',
     phaseLabel: 'FAZA',
+  },
+  chrome: {
+    menu: 'Menyu',
+    close: 'Yopish',
+  },
+  scenes: {
+    hero: 'Prolog — chegaradan narida',
+    missions: 'Ekspeditsiyalar solnomasi',
+    fleet: 'Dastur floti',
+    route: 'Reys traektoriyasi',
+    crew: '«Aurora» ekipaji',
+    contact: 'Final — aloqaga chiqish',
+  },
+  menuCaptions: {
+    missions: 'Uch ekspeditsiya dosyesi',
+    fleet: 'Uch sinf kema',
+    route: 'Yoʻlning besh fazasi',
+    crew: 'Bortda toʻrt kishi',
+    contact: 'Joy band qilish',
+  },
+  leader: {
+    program: 'Parvoz dasturi',
+    skip: 'Oʻtkazib yuborish uchun bosing',
   },
   hero: {
     titleLine1: 'Koinot',

@@ -12,6 +12,7 @@ export const ru: Dictionary = {
     fleet: 'Флот',
     route: 'Маршрут',
     crew: 'Экипаж',
+    contact: 'Связь',
     cta: 'Забронировать место',
     languageLabel: 'Выбор языка',
     menuLabel: 'Основная навигация',
@@ -19,6 +20,29 @@ export const ru: Dictionary = {
   telemetry: {
     status: 'MISSION ACTIVE',
     phaseLabel: 'ФАЗА',
+  },
+  chrome: {
+    menu: 'Меню',
+    close: 'Закрыть',
+  },
+  scenes: {
+    hero: 'Пролог — за краем',
+    missions: 'Хроника экспедиций',
+    fleet: 'Флот программы',
+    route: 'Траектория рейса',
+    crew: 'Экипаж «Авроры»',
+    contact: 'Финал — выход на связь',
+  },
+  menuCaptions: {
+    missions: 'Три досье экспедиций',
+    fleet: 'Три класса кораблей',
+    route: 'Пять фаз пути',
+    crew: 'Четверо на борту',
+    contact: 'Забронировать место',
+  },
+  leader: {
+    program: 'Полётная программа',
+    skip: 'Нажмите, чтобы пропустить',
   },
   hero: {
     titleLine1: 'За краем',

@@ -25,22 +25,24 @@
 Правило: **1–2 циановых акцента на экран**. Steel — скупо, для служебного слоя.
 Прозрачности задаются модификатором Tailwind (`text-bone/60`).
 
-## Типографика
+## Типографика — «кино-титры»
 
-| Роль | Семейство | Класс | Применение |
+Отдельного display-шрифта нет: заголовки — тот же Inter, но сверхтонкий, в UPPERCASE
+и с широким трекингом (постеры Interstellar/Dune).
+
+| Роль | Начертание | Класс | Применение |
 | --- | --- | --- | --- |
-| Display | Unbounded (500–700) | `font-display` | Акцент-строки заголовков, вордмарк, имена/названия |
-| Body | Inter | `font-sans` | Весь основной текст |
-| Mono | JetBrains Mono | `font-mono` | Телеметрия, eyebrows, теги, **все цифры/статы** |
+| Титры | Inter 200 + UPPERCASE + трекинг | `font-extralight uppercase tracking-cine` | Заголовки секций, названия, имена |
+| Body | Inter 300–500 | `font-sans` | Весь основной текст |
+| Mono | JetBrains Mono | `font-mono` | Телеметрия, таймкод, eyebrows, теги, **все цифры** |
 
-- Сигнатура заголовка секции: первая строка — `font-light` Inter; вторая строка —
-  `font-display uppercase text-accent` в ~0.52em от размера первой (Unbounded шире,
-  оптическая компенсация обязательна).
-- Названия (миссии, борта, имена, вехи): `font-display font-medium`, `text-base…text-2xl`.
+- Токены трекинга: `tracking-cine` 0.16em (титры), `tracking-cinewide` 0.3em
+  (вордмарк), arbitrary `[0.18em]`–`[0.2em]` для крупных кеглей.
+- Ключевая фраза заголовка — `text-accent` тем же начертанием (без смены веса).
+- Заголовки: `leading-[1.3…1.5]` — трекинговым капсам нужен воздух между строками.
 - Числа и характеристики: `font-mono font-medium tabular-nums`.
-- Eyebrows: `font-mono`, `text-[11px]`, `uppercase`, `tracking-telemetry` (0.28em),
-  `text-steel`.
-- Body: `text-base…text-lg`, `leading-relaxed`, `text-bone/60`.
+- Eyebrows: `font-mono text-[10…11px] uppercase tracking-telemetry text-steel`.
+- Body: `text-sm…text-base`, `leading-relaxed`, `text-bone/60`.
 
 ## Пространство и форма
 
