@@ -1,24 +1,18 @@
 import { useEffect, useRef } from 'react'
+import { asset } from '../lib/constants'
 import { mapRange } from '../lib/easing'
 import { readTokenRgb } from '../lib/colors'
 
-/** Off-screen band texture size; height maps onto the planet's diameter. */
+/** Internal texture size the source map is downsampled to. */
 const TEX_W = 1024
 const TEX_H = 512
 /** Texture scroll speed (screen px/s) — one revolution takes minutes. */
-const SPIN_SPEED = 5
-/** Ring set: radius factor, stroke width (at R = 600 px), alpha, tint. */
-const RINGS = [
-  { f: 1.42, w: 5, a: 0.2, ice: false },
-  { f: 1.52, w: 2, a: 0.13, ice: false },
-  { f: 1.57, w: 1, a: 0.16, ice: true },
-  { f: 1.63, w: 7, a: 0.24, ice: false },
-  { f: 1.72, w: 2.5, a: 0.1, ice: false },
-] as const
-const RING_TILT = (-14 * Math.PI) / 180
-/** Flattening of the ring ellipses (ry = rx * this). */
-const RING_FLATTEN = 0.21
+const SPIN_SPEED = 4
 const MAX_DPR = 2
+/** Mars dust colours for the rim/atmosphere — literal warm rgba values on
+ *  purpose: this is imagery colour (like the footage), not a UI token. */
+const DUST = '224, 154, 106'
+const DUST_BRIGHT = '255, 216, 178'
 
 interface PlanetRiseProps {
   /** Section viewport progress 0–1 — drives the parallax rise. */
@@ -27,15 +21,15 @@ interface PlanetRiseProps {
 }
 
 /**
- * The finale's ringed gas giant, painted on canvas from palette tokens: a
- * banded, noise-speckled texture wrapped into the sphere, a lit top limb with
- * a cold atmosphere rim, and Saturn-like rings behind the body. The band
- * texture is pre-rendered once per resize; the visible frame is a handful of
- * drawImage/gradient fills, spun imperceptibly slowly while the section is on
- * screen. The parallax rise is a CSS transform on the canvas element.
+ * The finale's horizon: the real Mars. A NASA-derived equirectangular colour
+ * map (2K, © Solar System Scope, CC BY 4.0 — credited in the README) is
+ * downsampled once into an offscreen texture, wrapped into the sphere clip,
+ * lit from above with a terminator, and finished with a thin dusty-orange
+ * atmosphere rim. The globe spins imperceptibly slowly while the section is
+ * on screen; the parallax rise is a CSS transform on the canvas element.
  *
- * Reduced motion: a single still frame, redrawn only on resize. The rAF loop
- * runs only while the canvas is intersecting and the tab is visible.
+ * Reduced motion: one still frame, redrawn only on resize. Zero-size layouts
+ * are guarded (a 0 radius would make the rim-arc radius negative and throw).
  */
 export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -47,13 +41,6 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
     if (!ctx) return
 
     const voidRgb = readTokenRgb('--void')
-    const deep = readTokenRgb('--deep')
-    const panel = readTokenRgb('--panel')
-    const steel = readTokenRgb('--steel')
-    const ice = readTokenRgb('--ice')
-    const accent = readTokenRgb('--accent')
-    const accentBright = readTokenRgb('--accent-bright')
-    const bone = readTokenRgb('--bone')
 
     let width = 0
     let height = 0
@@ -66,72 +53,26 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
     let atmosphere: CanvasGradient | null = null
     let raf = 0
     let visible = false
+    let disposed = false
     let offset = 0
     let lastTime = 0
 
-    /** Paint the banded gas-giant surface once into an offscreen canvas. */
+    // The source map loads once; every resize re-derives the working texture.
+    const source = new Image()
+    source.src = asset('mars_2k.jpg')
+
+    /** Downsample the source map and give it a subtle cinematic grade. */
     const buildTexture = () => {
+      if (!source.complete || source.naturalWidth === 0) return
       const tex = document.createElement('canvas')
       tex.width = TEX_W
       tex.height = TEX_H
       const g = tex.getContext('2d')
       if (!g) return
-
-      const base = g.createLinearGradient(0, 0, 0, TEX_H)
-      base.addColorStop(0, `rgb(${deep})`)
-      base.addColorStop(0.5, `rgb(${panel})`)
-      base.addColorStop(1, `rgb(${deep})`)
-      g.fillStyle = base
+      g.drawImage(source, 0, 0, TEX_W, TEX_H)
+      // Deepen shadows slightly so the surface sits into the page's dark frame.
+      g.fillStyle = `rgba(${voidRgb}, 0.16)`
       g.fillRect(0, 0, TEX_W, TEX_H)
-
-      // Soft latitude bands in muted palette tints.
-      const bandTints = [
-        `rgba(${steel}, 0.15)`,
-        `rgba(${deep}, 0.55)`,
-        `rgba(${ice}, 0.09)`,
-        `rgba(${panel}, 0.6)`,
-        `rgba(${steel}, 0.09)`,
-        `rgba(${accent}, 0.05)`,
-      ]
-      g.filter = 'blur(7px)'
-      let y = 0
-      while (y < TEX_H) {
-        const bandHeight = 14 + Math.random() * 46
-        g.fillStyle = bandTints[Math.floor(Math.random() * bandTints.length)]
-        g.fillRect(-8, y, TEX_W + 16, bandHeight)
-        y += bandHeight * (0.6 + Math.random() * 0.8)
-      }
-
-      // A few elliptical storms drifting in the bands.
-      g.filter = 'blur(10px)'
-      for (let i = 0; i < 3; i += 1) {
-        g.fillStyle = `rgba(${i === 0 ? ice : steel}, 0.08)`
-        g.beginPath()
-        g.ellipse(
-          Math.random() * TEX_W,
-          TEX_H * (0.25 + Math.random() * 0.5),
-          40 + Math.random() * 70,
-          10 + Math.random() * 16,
-          0,
-          0,
-          Math.PI * 2,
-        )
-        g.fill()
-      }
-
-      // Fine horizontal streaks + speckle so the surface reads as detail in 4K.
-      g.filter = 'blur(1px)'
-      for (let i = 0; i < 240; i += 1) {
-        const alpha = 0.015 + Math.random() * 0.04
-        g.fillStyle =
-          Math.random() < 0.5 ? `rgba(${bone}, ${alpha})` : `rgba(${voidRgb}, ${alpha * 1.6})`
-        g.fillRect(Math.random() * TEX_W, Math.random() * TEX_H, 60 + Math.random() * 300, 1 + Math.random() * 1.6)
-      }
-      g.filter = 'none'
-      for (let i = 0; i < 700; i += 1) {
-        g.fillStyle = `rgba(${bone}, ${0.01 + Math.random() * 0.025})`
-        g.fillRect(Math.random() * TEX_W, Math.random() * TEX_H, 1.2, 1.2)
-      }
       texture = tex
     }
 
@@ -141,16 +82,7 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
       if (!texture || width === 0 || height === 0 || radius <= 2) return
       ctx.clearRect(0, 0, width, height)
 
-      // Rings — drawn first, the body then hides their far middle.
-      for (const ring of RINGS) {
-        ctx.strokeStyle = `rgba(${ring.ice ? ice : steel}, ${ring.a})`
-        ctx.lineWidth = Math.max(0.8, (ring.w * radius) / 600)
-        ctx.beginPath()
-        ctx.ellipse(cx, cy, radius * ring.f, radius * ring.f * RING_FLATTEN, RING_TILT, 0, Math.PI * 2)
-        ctx.stroke()
-      }
-
-      // Body: wrapped band texture inside the sphere clip, then lighting.
+      // Body: wrapped texture inside the sphere clip, then lighting.
       ctx.save()
       ctx.beginPath()
       ctx.arc(cx, cy, radius, 0, Math.PI * 2)
@@ -171,23 +103,18 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
       }
       ctx.restore()
 
-      // Cold atmosphere rim (annulus) + a lit arc along the top limb.
+      // Thin dusty atmosphere (Mars' is faint) + a lit arc on the top limb.
       if (atmosphere) {
         ctx.fillStyle = atmosphere
         ctx.beginPath()
-        ctx.arc(cx, cy, radius * 1.09, 0, Math.PI * 2)
-        ctx.arc(cx, cy, radius * 0.94, 0, Math.PI * 2, true)
+        ctx.arc(cx, cy, radius * 1.06, 0, Math.PI * 2)
+        ctx.arc(cx, cy, radius * 0.95, 0, Math.PI * 2, true)
         ctx.fill()
       }
-      ctx.strokeStyle = `rgba(${accentBright}, 0.5)`
-      ctx.lineWidth = 1.4
+      ctx.strokeStyle = `rgba(${DUST_BRIGHT}, 0.45)`
+      ctx.lineWidth = 1.2
       ctx.beginPath()
       ctx.arc(cx, cy, radius - 0.7, Math.PI * 1.12, Math.PI * 1.88)
-      ctx.stroke()
-      ctx.strokeStyle = `rgba(${bone}, 0.2)`
-      ctx.lineWidth = 0.6
-      ctx.beginPath()
-      ctx.arc(cx, cy, radius - 1.8, Math.PI * 1.2, Math.PI * 1.8)
       ctx.stroke()
     }
 
@@ -232,20 +159,33 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
       buildTexture()
       bodyShade = ctx.createLinearGradient(0, cy - radius, 0, cy + radius * 0.25)
       bodyShade.addColorStop(0, `rgba(${voidRgb}, 0)`)
-      bodyShade.addColorStop(0.5, `rgba(${voidRgb}, 0.22)`)
-      bodyShade.addColorStop(1, `rgba(${voidRgb}, 0.85)`)
+      bodyShade.addColorStop(0.5, `rgba(${voidRgb}, 0.3)`)
+      bodyShade.addColorStop(1, `rgba(${voidRgb}, 0.9)`)
       limbShade = ctx.createRadialGradient(cx, cy, radius * 0.6, cx, cy, radius)
       limbShade.addColorStop(0, `rgba(${voidRgb}, 0)`)
-      limbShade.addColorStop(0.86, `rgba(${voidRgb}, 0.12)`)
+      limbShade.addColorStop(0.86, `rgba(${voidRgb}, 0.14)`)
       limbShade.addColorStop(1, `rgba(${voidRgb}, 0.6)`)
-      atmosphere = ctx.createRadialGradient(cx, cy, radius * 0.94, cx, cy, radius * 1.09)
-      atmosphere.addColorStop(0, `rgba(${accent}, 0)`)
-      atmosphere.addColorStop(0.42, `rgba(${accent}, 0.26)`)
-      atmosphere.addColorStop(0.7, `rgba(${accentBright}, 0.1)`)
-      atmosphere.addColorStop(1, `rgba(${accent}, 0)`)
+      atmosphere = ctx.createRadialGradient(cx, cy, radius * 0.95, cx, cy, radius * 1.06)
+      atmosphere.addColorStop(0, `rgba(${DUST}, 0)`)
+      atmosphere.addColorStop(0.45, `rgba(${DUST}, 0.2)`)
+      atmosphere.addColorStop(0.72, `rgba(${DUST_BRIGHT}, 0.08)`)
+      atmosphere.addColorStop(1, `rgba(${DUST}, 0)`)
 
       draw()
     }
+
+    // First frame as soon as the map arrives (decode() keeps the draw off the
+    // main thread's critical path); resize handles every subsequent rebuild.
+    source
+      .decode()
+      .then(() => {
+        if (disposed) return
+        buildTexture()
+        draw()
+      })
+      .catch(() => {
+        // Image failed (offline?) — the finale simply keeps its starfield.
+      })
 
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting
@@ -261,6 +201,7 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
     resize()
 
     return () => {
+      disposed = true
       stop()
       observer.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)

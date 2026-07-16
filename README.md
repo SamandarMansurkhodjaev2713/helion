@@ -130,6 +130,15 @@ helion/
 подпапке GitHub Pages. Пуш в `main` автоматически собирает и публикует сайт через
 [`deploy.yml`](.github/workflows/deploy.yml).
 
+## ✦ Медиа и атрибуция
+
+- **Текстура Марса** (`public/mars_2k.jpg`) — [Solar System Scope](https://www.solarsystemscope.com/textures/)
+  (зеркало Wikimedia Commons), лицензия [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Архивные кадры флота** — фотографии NASA (public domain, [images.nasa.gov](https://images.nasa.gov)):
+  `art002e016281` (Orion, Artemis II), `iss053e317722` (Cygnus OA-8),
+  `iss072e004110` (Dragon Freedom). На сайте обработаны в холодный дуотон.
+- Hero-видео и постеры — собственные материалы проекта.
+
 ## ✦ Автор
 
 **Samandar Mansurkhodjaev** — дизайн, код, контент.

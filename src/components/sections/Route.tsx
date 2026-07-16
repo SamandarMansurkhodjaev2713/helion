@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { Milestone } from '../../i18n/types'
-import { SECTION_ID } from '../../lib/constants'
+import { SCENE_NO, SECTION_ID } from '../../lib/constants'
 import { useMediaQuery, usePinProgress, useReducedMotion } from '../../lib/hooks'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
+import GhostScene from '../primitives/GhostScene'
 
 function MilestonePanel({ milestone, index }: { milestone: Milestone; index: number }) {
   return (
@@ -100,7 +101,8 @@ export default function Route() {
 
   if (!pinned) {
     return (
-      <section id={SECTION_ID.route} className="mx-auto max-w-4xl px-5 py-28 md:px-10">
+      <section id={SECTION_ID.route} className="relative mx-auto max-w-4xl px-5 py-24 md:px-10">
+        <GhostScene scene={SCENE_NO[SECTION_ID.route]} progress={0.5} />
         <SectionHeading
           eyebrow={t.route.eyebrow}
           title={t.route.title}
@@ -119,6 +121,7 @@ export default function Route() {
       {/* Tall wrapper provides the scroll distance for the pinned scene */}
       <div ref={pinRef} className="h-[380vh]">
         <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
+          <GhostScene scene={SCENE_NO[SECTION_ID.route]} progress={progress} />
           {/* Header + progress readout */}
           <div className="mx-auto flex w-full max-w-7xl items-end justify-between px-5 pt-28 md:px-10 md:pt-32">
             <SectionHeading

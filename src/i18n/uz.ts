@@ -137,6 +137,7 @@ export const uz: Dictionary = {
     intro:
       'Uchta sinf. Bitta tamoyil: insonni zond yetgan joydan uzoqroqqa olib borish — va uni uyiga qaytarish.',
     selectHint: 'Bortni tanlang',
+    stillLabel: 'Arxiv kadri',
     ships: [
       {
         id: 'aurora',

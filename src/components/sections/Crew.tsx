@@ -1,5 +1,5 @@
 import { useI18n } from '../../i18n'
-import { SECTION_ID } from '../../lib/constants'
+import { SCENE_NO, SECTION_ID } from '../../lib/constants'
 import SectionShell from '../primitives/SectionShell'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
@@ -16,6 +16,7 @@ export default function Crew() {
     <SectionShell
       id={SECTION_ID.crew}
       atmosphere="accent"
+      scene={SCENE_NO[SECTION_ID.crew]}
       className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading

@@ -39,6 +39,17 @@ export const SECTION_ID = {
 
 export type SectionId = (typeof SECTION_ID)[keyof typeof SECTION_ID]
 
+/** Scene number of each section — the film-chapter numbering used across the
+ *  chrome (bottom bar), menu slates and the ghost watermarks. */
+export const SCENE_NO: Record<SectionId, string> = {
+  [SECTION_ID.hero]: '01',
+  [SECTION_ID.missions]: '02',
+  [SECTION_ID.fleet]: '03',
+  [SECTION_ID.route]: '04',
+  [SECTION_ID.crew]: '05',
+  [SECTION_ID.contact]: '06',
+}
+
 /** Order the nav renders section links in. */
 export const NAV_SECTIONS: readonly SectionId[] = [
   SECTION_ID.missions,
@@ -115,6 +126,10 @@ export const STARFIELD = {
   /** Scroll speed (px/frame) at which motion blur saturates + max streak px. */
   blurAtVelocity: 60,
   maxBlur: 34,
+  /** Faint diagonal "galactic band" of small haze puffs. */
+  bandPuffs: { desktop: 10, mobile: 6 },
+  /** Scroll speed (px/frame) where the hyper-jump warp burst kicks in. */
+  warpBurstAt: 70,
   /** Meteor cadence (ms): first appearance window, then steady-state window. */
   meteorFirstDelay: [5000, 9000] as const,
   meteorDelay: [15000, 25000] as const,

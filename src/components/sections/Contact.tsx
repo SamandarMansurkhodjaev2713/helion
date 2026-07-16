@@ -1,9 +1,10 @@
 import { Send, Mail } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { CONTACT, SECTION_ID } from '../../lib/constants'
+import { CONTACT, SCENE_NO, SECTION_ID } from '../../lib/constants'
 import { useReducedMotion, useViewportProgress } from '../../lib/hooks'
 import Reveal from '../primitives/Reveal'
 import CineButton from '../primitives/CineButton'
+import GhostScene from '../primitives/GhostScene'
 import PlanetRise from '../PlanetRise'
 
 export default function Contact() {
@@ -17,6 +18,7 @@ export default function Contact() {
       id={SECTION_ID.contact}
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-36 text-center"
     >
+      <GhostScene scene={SCENE_NO[SECTION_ID.contact]} progress={progress} />
       <PlanetRise progress={progress} reduced={reduced} />
 
       <div className="relative z-content mx-auto max-w-3xl">

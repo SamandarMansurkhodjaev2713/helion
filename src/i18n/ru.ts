@@ -137,6 +137,7 @@ export const ru: Dictionary = {
     intro:
       'Три класса. Один принцип: довезти человека дальше, чем доходил зонд, — и вернуть его домой.',
     selectHint: 'Выберите борт',
+    stillLabel: 'Архивный кадр',
     ships: [
       {
         id: 'aurora',

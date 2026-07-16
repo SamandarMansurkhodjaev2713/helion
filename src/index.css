@@ -166,15 +166,6 @@ div[id] {
   }
 }
 
-/* Fleet blueprint: line-work draws itself in (paths carry pathLength="1") */
-@keyframes blueprint-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *,

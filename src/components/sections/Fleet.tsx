@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useI18n } from '../../i18n'
 import type { ShipItem, ShipSpec } from '../../i18n/types'
-import { SECTION_ID } from '../../lib/constants'
+import { SCENE_NO, SECTION_ID, asset } from '../../lib/constants'
 import { clamp01, easeOutExpo } from '../../lib/easing'
 import { useInView, useReducedMotion } from '../../lib/hooks'
 import SectionShell from '../primitives/SectionShell'
@@ -74,153 +74,40 @@ function SpecRow({ spec, play, delay }: { spec: ShipSpec; play: boolean; delay: 
   )
 }
 
-/** Per-ship line-art: hull paths, optional ring ellipses, accent points and a
- *  blueprint scale note. Coordinates live in a 240×160 viewBox, hull on y=80. */
-interface BlueprintSpec {
-  paths: string[]
-  ellipses: Array<{ cx: number; cy: number; rx: number; ry: number }>
-  accents: Array<[number, number]>
-  scale: string
+/** Archive stills of the fleet — real NASA photography (public domain, IDs in
+ *  the README) graded into the site's cold duotone at render time. */
+const STILLS: Record<string, string> = {
+  aurora: 'still_aurora.jpg',
+  vesta: 'still_vesta.jpg',
+  xerxes: 'still_xerxes.jpg',
 }
 
-const BLUEPRINTS: Record<string, BlueprintSpec> = {
-  aurora: {
-    paths: [
-      'M24 80 H150', // spine
-      'M24 80 H12 M14 74 V86', // nose probe + sensor tick
-      'M150 71 H186 V89 H150 Z', // crew module
-      'M156 76 V84 M162 76 V84 M168 76 V84', // window slits
-      'M186 72 H202 V88 H186 Z', // engine block
-      'M202 74 H212 M202 80 H214 M202 86 H212', // nozzles
-      'M60 71 V54 H70 M60 89 V106 H70', // fore radiators
-      'M124 71 V60 H132 M124 89 V100 H132', // aft radiators
-    ],
-    ellipses: [
-      { cx: 95, cy: 80, rx: 17, ry: 27 }, // habitation ring
-      { cx: 95, cy: 80, rx: 11, ry: 19 },
-    ],
-    accents: [
-      [208, 80],
-      [95, 53],
-    ],
-    scale: 'SCALE 1:400',
-  },
-  vesta: {
-    paths: [
-      'M20 80 H208', // spine
-      'M30 70 H56 V90 H30 Z', // tug head
-      'M30 75 L18 80 L30 85', // nose wedge
-      'M38 74 V86', // cockpit slit
-      'M70 66 H100 V94 H70 Z M70 66 L100 94', // cargo frame 1 + brace
-      'M108 66 H138 V94 H108 Z M108 66 L138 94', // cargo frame 2 + brace
-      'M146 66 H176 V94 H146 Z M146 66 L176 94', // cargo frame 3 + brace
-      'M184 71 H200 V89 H184 Z', // engine block
-      'M200 75 H210 M200 85 H210', // nozzles
-    ],
-    ellipses: [],
-    accents: [
-      [24, 80],
-      [205, 80],
-    ],
-    scale: 'SCALE 1:520',
-  },
-  xerxes: {
-    paths: [
-      'M26 80 L108 68 H176 L206 80 L176 92 H108 Z', // dart fuselage
-      'M116 68 L128 60 H146 L152 68', // canopy
-      'M150 68 L166 50 L174 53 L162 68', // dorsal fin
-      'M150 92 L166 110 L174 107 L162 92', // ventral fin
-      'M26 80 H12', // pitot boom
-      'M206 76 H218 M206 84 H218', // exhaust
-    ],
-    ellipses: [],
-    accents: [[200, 80]],
-    scale: 'SCALE 1:260',
-  },
-}
-
-const BLUEPRINT_TEXT_STYLE = {
-  font: '500 6.5px "JetBrains Mono", monospace',
-  letterSpacing: '0.15em',
-} as const
-
-/** Stagger for the draw-on animation of blueprint line-work. */
-const drawOn = (index: number) => ({
-  animation: `blueprint-draw 800ms var(--ease-cinematic) ${120 + index * 90}ms forwards`,
-})
-
-/** A technical blueprint of the selected ship: dashed drawing frame, dash-dot
- *  centreline, hull line-work that draws itself on (re-keyed per ship), accent
- *  beacons and a dimension line with a scale note. */
-function ShipBlueprint({ ship }: { ship: ShipItem }) {
-  const spec = BLUEPRINTS[ship.id] ?? BLUEPRINTS.aurora
+/** A cinematic "archive frame" of the selected ship: the photo is desaturated
+ *  and re-tinted cold via blend layers, framed with ticks, grain and a mono
+ *  caption. Re-keyed per ship so the frame re-enters with the focus pull. */
+function ShipStill({ ship, label }: { ship: ShipItem; label: string }) {
   return (
-    <svg key={ship.id} viewBox="0 0 240 160" aria-hidden className="h-full w-full">
-      {/* Drawing-sheet chrome */}
-      <g fill="none" stroke="currentColor" className="text-steel/25">
-        <rect x="6" y="6" width="228" height="124" strokeDasharray="3 5" />
-      </g>
-      <path
-        d="M6 80 H234"
-        fill="none"
-        stroke="currentColor"
-        strokeDasharray="8 5 1.5 5"
-        className="text-steel/20"
+    <figure key={ship.id} className="relative m-0 h-full overflow-hidden border border-white/10 bg-void grain">
+      <img
+        src={asset(STILLS[ship.id] ?? STILLS.aurora)}
+        alt={`${ship.name} — ${ship.role}`}
+        loading="lazy"
+        className="h-full w-full object-cover grayscale contrast-[1.08] brightness-[0.82]"
       />
-
-      {/* Hull line-work — draws itself on */}
-      <g
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-bone/70"
-      >
-        {spec.paths.map((d, index) => (
-          <path
-            key={d}
-            d={d}
-            pathLength={1}
-            strokeDasharray="1"
-            strokeDashoffset={1}
-            style={drawOn(index)}
-          />
-        ))}
-        {spec.ellipses.map((e, index) => (
-          <ellipse
-            key={`${e.cx}-${e.rx}`}
-            cx={e.cx}
-            cy={e.cy}
-            rx={e.rx}
-            ry={e.ry}
-            pathLength={1}
-            strokeDasharray="1"
-            strokeDashoffset={1}
-            style={drawOn(spec.paths.length + index)}
-          />
-        ))}
-      </g>
-
-      {/* Beacon points */}
-      <g className="fill-accent">
-        {spec.accents.map(([x, y]) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} r="2" />
-        ))}
-      </g>
-
-      {/* Dimension line + labels */}
-      <g stroke="currentColor" className="text-steel/50">
-        <path d="M24 142 H96 M144 142 H216" fill="none" />
-        <path d="M24 138 V146 M216 138 V146" fill="none" />
-      </g>
-      <text x="120" y="144.5" textAnchor="middle" className="fill-steel" style={BLUEPRINT_TEXT_STYLE}>
-        {spec.scale}
-      </text>
-      <text x="230" y="18" textAnchor="end" className="fill-steel" style={BLUEPRINT_TEXT_STYLE}>
-        {ship.id.toUpperCase()}
-      </text>
-    </svg>
+      {/* Cold duotone: colorize pass (mirrors --deep) + a cyan lift (mirrors --accent) */}
+      <div aria-hidden className="absolute inset-0 mix-blend-color" style={{ background: 'rgb(30, 52, 76)' }} />
+      <div
+        aria-hidden
+        className="absolute inset-0 mix-blend-soft-light"
+        style={{ background: 'linear-gradient(135deg, rgba(111,211,242,0.38), transparent 62%)' }}
+      />
+      {/* Frame shading + caption */}
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-void/75 via-transparent to-void/25" />
+      <figcaption className="absolute inset-x-0 bottom-0 flex items-baseline justify-between px-3.5 pb-2.5 font-mono text-[9px] uppercase tracking-[0.18em] text-bone/60">
+        <span>{ship.id.toUpperCase()} · {label}</span>
+        <span className="text-accent/70">{ship.klass}</span>
+      </figcaption>
+    </figure>
   )
 }
 
@@ -233,7 +120,7 @@ function InstrumentTick({ position }: { position: string }) {
   return <span aria-hidden className={`absolute ${position} h-2.5 w-2.5 ${edges} border-accent/50`} />
 }
 
-function ShipDetail({ ship }: { ship: ShipItem }) {
+function ShipDetail({ ship, stillLabel }: { ship: ShipItem; stillLabel: string }) {
   const [ref, inView] = useInView<HTMLDivElement>({ once: true, threshold: 0.3 })
 
   return (
@@ -261,14 +148,16 @@ function ShipDetail({ ship }: { ship: ShipItem }) {
         </div>
       </div>
 
-      {/* Technical blueprint in a ticked instrument frame */}
-      <TiltCard className="mx-auto w-full max-w-[320px] md:w-80 md:max-w-none">
-        <div className="relative aspect-[3/2] border border-white/10 bg-white/[0.015] p-3">
+      {/* Archive still in a ticked frame */}
+      <TiltCard className="mx-auto w-full max-w-[360px] md:w-96 md:max-w-none">
+        <div className="relative aspect-[4/3]">
           <InstrumentTick position="-left-px -top-px" />
           <InstrumentTick position="-right-px -top-px" />
           <InstrumentTick position="-left-px -bottom-px" />
           <InstrumentTick position="-right-px -bottom-px" />
-          <ShipBlueprint ship={ship} />
+          <div className="absolute inset-0">
+            <ShipStill ship={ship} label={stillLabel} />
+          </div>
         </div>
       </TiltCard>
     </div>
@@ -322,7 +211,7 @@ function ShipTabs({
       aria-label={label}
       aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
-      className="flex gap-8 overflow-x-auto border-b border-white/10 md:gap-12"
+      className="flex gap-3 overflow-x-auto pb-1 md:gap-4"
     >
       {ships.map((ship, index) => {
         const isActive = ship.id === activeId
@@ -339,20 +228,30 @@ function ShipTabs({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(ship.id)}
             data-cursor="link"
-            className={`group relative shrink-0 pb-4 text-left transition-colors duration-300 ${
-              isActive ? 'text-bone' : 'text-bone/40 hover:text-bone/75'
+            className={`group relative min-w-[130px] shrink-0 border px-4 py-3 text-left transition-colors duration-300 md:min-w-[170px] ${
+              isActive
+                ? 'border-accent/60 bg-accent/[0.07] text-bone'
+                : 'border-white/15 text-bone/45 hover:border-accent/35 hover:bg-white/[0.02] hover:text-bone/85'
             }`}
           >
-            <span className="block font-mono text-[10px] tracking-[0.2em] text-steel">
-              0{index + 1}
+            <span className="flex items-center justify-between font-mono text-[10px] tracking-[0.2em]">
+              <span className={isActive ? 'text-accent' : 'text-steel'}>0{index + 1}</span>
+              <span
+                aria-hidden
+                className={`transition-transform duration-300 ${
+                  isActive ? 'text-accent' : 'text-bone/30 group-hover:translate-x-0.5'
+                }`}
+              >
+                ▸
+              </span>
             </span>
-            <span className="mt-1 block text-base font-extralight uppercase tracking-cine md:text-lg">
+            <span className="mt-1.5 block text-base font-extralight uppercase tracking-cine md:text-lg">
               {ship.name}
             </span>
             <span
               aria-hidden
-              className={`absolute -bottom-px left-0 h-px w-full origin-left bg-accent transition-transform duration-500 ease-cinematic ${
-                isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'
+              className={`absolute inset-x-0 -bottom-px h-px origin-left bg-accent transition-transform duration-500 ease-cinematic ${
+                isActive ? 'scale-x-100' : 'scale-x-0'
               }`}
             />
           </button>
@@ -372,6 +271,7 @@ export default function Fleet() {
     <SectionShell
       id={SECTION_ID.fleet}
       atmosphere="steel"
+      scene={SCENE_NO[SECTION_ID.fleet]}
       className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading
@@ -383,6 +283,10 @@ export default function Fleet() {
       />
 
       <Reveal variant="rise" delay={120}>
+        {/* Visible affordance: tell people the slates below switch the sheet */}
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-steel/80">
+          {t.fleet.selectHint} ↓
+        </p>
         <ShipTabs
           ships={ships}
           activeId={activeId}
@@ -395,9 +299,9 @@ export default function Fleet() {
           role="tabpanel"
           aria-labelledby={`fleet-tab-${activeShip.id}`}
           tabIndex={0}
-          className="pt-10 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:pt-14"
+          className="pt-10 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:pt-12"
         >
-          <ShipDetail ship={activeShip} />
+          <ShipDetail ship={activeShip} stillLabel={t.fleet.stillLabel} />
         </div>
       </Reveal>
     </SectionShell>

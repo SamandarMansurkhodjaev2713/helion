@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { MissionItem, MissionStatus } from '../../i18n/types'
-import { SECTION_ID } from '../../lib/constants'
+import { SCENE_NO, SECTION_ID } from '../../lib/constants'
 import SectionShell from '../primitives/SectionShell'
 import SectionHeading from '../primitives/SectionHeading'
 import Reveal from '../primitives/Reveal'
@@ -60,7 +60,7 @@ function MissionRow({
           aria-controls={panelId}
           data-cursor="link"
           data-cursor-label={t.missions.viewDossier}
-          className="group grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-5 py-6 text-left md:grid-cols-[90px_1fr_auto_36px] md:gap-x-8 md:py-9"
+          className="group grid w-full grid-cols-[auto_1fr_auto_18px] items-center gap-x-4 py-6 text-left transition-colors duration-300 hover:bg-white/[0.02] md:grid-cols-[90px_1fr_auto_36px] md:gap-x-8 md:py-9"
         >
           <span
             className={`font-mono text-2xl font-light tabular-nums transition-colors duration-500 md:text-4xl ${
@@ -81,12 +81,16 @@ function MissionRow({
 
           <StatusMark status={mission.status} label={statusLabel[mission.status]} />
 
-          {/* Plus → minus indicator */}
-          <span className="relative hidden h-3 w-3 justify-self-end md:block" aria-hidden>
-            <span className="absolute left-0 top-1/2 h-px w-3 bg-bone/40 transition-colors duration-300 group-hover:bg-accent" />
+          {/* Plus → minus indicator (always visible — it is the tap affordance) */}
+          <span className="relative block h-3 w-3 justify-self-end" aria-hidden>
             <span
-              className={`absolute left-1/2 top-0 h-3 w-px bg-bone/40 transition-all duration-500 ease-cinematic group-hover:bg-accent ${
-                open ? 'rotate-90 opacity-0' : ''
+              className={`absolute left-0 top-1/2 h-px w-3 transition-colors duration-300 group-hover:bg-accent ${
+                open ? 'bg-accent' : 'bg-bone/50'
+              }`}
+            />
+            <span
+              className={`absolute left-1/2 top-0 h-3 w-px transition-all duration-500 ease-cinematic group-hover:bg-accent ${
+                open ? 'rotate-90 opacity-0 bg-accent' : 'bg-bone/50'
               }`}
             />
           </span>
@@ -133,6 +137,7 @@ export default function Missions() {
     <SectionShell
       id={SECTION_ID.missions}
       atmosphere="accent"
+      scene={SCENE_NO[SECTION_ID.missions]}
       className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading

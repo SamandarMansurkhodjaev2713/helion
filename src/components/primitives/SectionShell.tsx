@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { useReducedMotion, useViewportProgress } from '../../lib/hooks'
 import { mapRange } from '../../lib/easing'
+import GhostScene from './GhostScene'
 
 type Atmosphere = 'accent' | 'steel' | 'none'
 
@@ -10,6 +11,8 @@ interface SectionShellProps {
   className?: string
   /** Tint of the ambient glow that drifts behind the section. */
   atmosphere?: Atmosphere
+  /** Two-digit scene number — renders the parallax ghost watermark. */
+  scene?: string
 }
 
 const GLOW: Record<Atmosphere, string> = {
@@ -23,19 +26,21 @@ const GLOW: Record<Atmosphere, string> = {
 
 /**
  * The consistent wrapper for every content section. It provides the anchor id,
- * vertical rhythm, and a parallaxing ambient glow so no section sits on flat
- * black. The glow lives on its own background layer — the transform never
- * touches the content, so sticky/pinned children (the route timeline) keep
- * working. Under reduced motion the glow is static.
+ * vertical rhythm, a parallaxing ambient glow and (optionally) the giant ghost
+ * scene number, so no section sits on flat black. Both decorations live on
+ * background layers — transforms never touch the content, so sticky/pinned
+ * children keep working. Under reduced motion everything is static.
  */
 export default function SectionShell({
   id,
   children,
   className = '',
   atmosphere = 'none',
+  scene,
 }: SectionShellProps) {
   const reduced = useReducedMotion()
-  const [ref, progress] = useViewportProgress<HTMLElement>(!reduced && atmosphere !== 'none')
+  const trackProgress = !reduced && (atmosphere !== 'none' || Boolean(scene))
+  const [ref, progress] = useViewportProgress<HTMLElement>(trackProgress)
 
   // Glow drifts up slowly and breathes brightest while the section is centred.
   const driftY = reduced ? 0 : mapRange(progress, 0, 1, 60, -60)
@@ -58,6 +63,7 @@ export default function SectionShell({
           />
         </div>
       )}
+      {scene && <GhostScene scene={scene} progress={progress} />}
       {children}
     </section>
   )

@@ -62,6 +62,14 @@ interface Satellite {
   blinkPhase: number
 }
 
+/** A single distant spiral galaxy, drifting at the deepest parallax layer. */
+interface Galaxy {
+  x: number
+  y: number
+  depth: number
+  angle: number
+}
+
 /** Pre-render a soft radial sprite (bokeh disc / glow / haze) once, so the
  *  frame loop only ever calls drawImage — no per-frame gradient allocation. */
 function makeRadialSprite(size: number, rgb: string, coreAlpha: number): HTMLCanvasElement | null {
@@ -76,6 +84,46 @@ function makeRadialSprite(size: number, rgb: string, coreAlpha: number): HTMLCan
   grad.addColorStop(0.55, `rgba(${rgb}, ${coreAlpha * 0.32})`)
   grad.addColorStop(1, `rgba(${rgb}, 0)`)
   g.fillStyle = grad
+  g.fillRect(0, 0, size, size)
+  return sprite
+}
+
+/** Pre-render a small tilted spiral galaxy: elliptical halo, two blurred arm
+ *  arcs and a bright core. Drawn once; the frame loop only drawImages it. */
+function makeGalaxySprite(size: number, coreRgb: string, armRgb: string): HTMLCanvasElement | null {
+  const sprite = document.createElement('canvas')
+  sprite.width = size
+  sprite.height = size
+  const g = sprite.getContext('2d')
+  if (!g) return null
+  const half = size / 2
+
+  g.save()
+  g.translate(half, half)
+  g.scale(1, 0.42)
+  g.translate(-half, -half)
+  const halo = g.createRadialGradient(half, half, 0, half, half, half)
+  halo.addColorStop(0, `rgba(${coreRgb}, 0.5)`)
+  halo.addColorStop(0.3, `rgba(${armRgb}, 0.16)`)
+  halo.addColorStop(1, `rgba(${armRgb}, 0)`)
+  g.fillStyle = halo
+  g.fillRect(0, 0, size, size)
+  g.filter = 'blur(3px)'
+  g.strokeStyle = `rgba(${armRgb}, 0.28)`
+  g.lineWidth = size * 0.045
+  g.beginPath()
+  g.arc(half, half, size * 0.28, 0.3, 2.5)
+  g.stroke()
+  g.beginPath()
+  g.arc(half, half, size * 0.31, Math.PI + 0.3, Math.PI + 2.5)
+  g.stroke()
+  g.filter = 'none'
+  g.restore()
+
+  const core = g.createRadialGradient(half, half, 0, half, half, size * 0.07)
+  core.addColorStop(0, `rgba(${coreRgb}, 0.9)`)
+  core.addColorStop(1, `rgba(${coreRgb}, 0)`)
+  g.fillStyle = core
   g.fillRect(0, 0, size, size)
   return sprite
 }
@@ -123,10 +171,12 @@ export default function StarField() {
     const bokehSprites = starColors.map((rgb) => makeRadialSprite(SPRITE, rgb, 0.85))
     const glowSprite = makeRadialSprite(SPRITE, ice, 0.5)
     const hazeSprites = [
-      makeRadialSprite(512, steel, 0.05),
-      makeRadialSprite(512, ice, 0.04),
-      makeRadialSprite(512, accent, 0.03),
+      makeRadialSprite(512, steel, 0.07),
+      makeRadialSprite(512, ice, 0.055),
+      makeRadialSprite(512, accent, 0.04),
     ]
+    const galaxySprite = makeGalaxySprite(220, bone, ice)
+    const warpGlow = makeRadialSprite(256, accent, 0.4)
 
     let dpr = 1
     let width = 0
@@ -139,6 +189,9 @@ export default function StarField() {
     let nextMeteorAt = 0
     let satellite: Satellite | null = null
     let nextSatelliteAt = 0
+    let galaxy: Galaxy | null = null
+    /** Smoothed hyper-jump intensity (0–1), fed by scroll velocity spikes. */
+    let burst = 0
     let raf = 0
     let lastTime = 0
     let lastScrollY = window.scrollY
@@ -192,6 +245,28 @@ export default function StarField() {
         driftPhase: Math.random() * Math.PI * 2,
         spriteIndex: i % hazeSprites.length,
       }))
+
+      // A faint diagonal band of small puffs — the hint of a galactic plane.
+      const bandCount = isMobile ? STARFIELD.bandPuffs.mobile : STARFIELD.bandPuffs.desktop
+      for (let i = 0; i < bandCount; i += 1) {
+        const t = (i + Math.random() * 0.6) / bandCount
+        hazes.push({
+          x: t * width,
+          y: height * 0.18 + t * height * 0.5 + (Math.random() - 0.5) * height * 0.12,
+          radius: randomBetween(0.1, 0.2) * Math.max(width, height),
+          alpha: randomBetween(0.35, 0.7),
+          driftPhase: Math.random() * Math.PI * 2,
+          spriteIndex: i % hazeSprites.length,
+        })
+      }
+
+      // One distant spiral galaxy in the upper-left field, deepest layer.
+      galaxy = {
+        x: width * randomBetween(0.14, 0.38),
+        y: height * randomBetween(0.16, 0.4),
+        depth: 0.22,
+        angle: randomBetween(-0.5, 0.5),
+      }
     }
 
     const spawnMeteor = () => {
@@ -396,15 +471,35 @@ export default function StarField() {
       ctx.fill()
     }
 
+    /** The distant galaxy: deepest parallax layer, rotating imperceptibly. */
+    const drawGalaxy = (time: number, camX: number, camY: number) => {
+      if (!galaxy || !galaxySprite) return
+      const { sx, sy } = project(galaxy, camX, camY, 140)
+      const size = Math.max(width, height) * 0.17
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(galaxy.angle + time * 0.00002)
+      ctx.globalAlpha = 0.6
+      ctx.drawImage(galaxySprite, -size, -size, size * 2, size * 2)
+      ctx.restore()
+      ctx.globalAlpha = 1
+    }
+
     const render = (time: number) => {
       const dt = Math.min(0.05, lastTime ? (time - lastTime) / 1000 : 0.016)
       lastTime = time
 
-      // Smoothed scroll velocity → depth-scaled motion blur.
+      // Smoothed scroll velocity → depth-scaled motion blur; sharp spikes feed
+      // the hyper-jump burst, which eases in and bleeds off slowly.
       const y = window.scrollY
       velocity = velocity * 0.82 + (y - lastScrollY) * 0.18
       lastScrollY = y
-      const blur = clamp01(Math.abs(velocity) / STARFIELD.blurAtVelocity) * STARFIELD.maxBlur
+      const rawBurst = clamp01((Math.abs(velocity) - STARFIELD.warpBurstAt) / 60)
+      burst += (rawBurst - burst) * 0.08
+      const blur =
+        clamp01(Math.abs(velocity) / STARFIELD.blurAtVelocity) *
+        STARFIELD.maxBlur *
+        (1 + burst * 1.3)
 
       // Never-repeating Lissajous camera drift.
       const t = time * 0.001
@@ -417,11 +512,22 @@ export default function StarField() {
 
       ctx.clearRect(0, 0, width, height)
       drawHaze(time)
+      drawGalaxy(time, camX, camY)
       drawStars(farStars, time, camX, camY, blur, false)
       drawStars(midStars, time, camX, camY, blur, true)
       drawBokehs(time, camX, camY, blur)
       drawSatellite(dt, time)
       drawMeteor(dt, time)
+
+      // Hyper-jump wash: an additive cold glow from the frame centre.
+      if (burst > 0.02 && warpGlow) {
+        const reach = Math.max(width, height) * 0.85
+        ctx.globalCompositeOperation = 'lighter'
+        ctx.globalAlpha = burst * 0.14
+        ctx.drawImage(warpGlow, width / 2 - reach, height / 2 - reach, reach * 2, reach * 2)
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.globalAlpha = 1
+      }
 
       raf = requestAnimationFrame(render)
     }
@@ -430,6 +536,7 @@ export default function StarField() {
     const drawStatic = () => {
       ctx.clearRect(0, 0, width, height)
       drawHaze(0)
+      drawGalaxy(0, 0, 0)
       for (const star of [...farStars, ...midStars]) {
         ctx.fillStyle = `rgba(${starColors[star.colorIndex]}, ${clamp01(star.baseAlpha)})`
         ctx.beginPath()

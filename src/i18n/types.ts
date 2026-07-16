@@ -151,6 +151,8 @@ export interface Dictionary {
     titleEmphasis: string
     intro: string
     selectHint: string
+    /** Caption tag on the archive still of the selected ship. */
+    stillLabel: string
     ships: ShipItem[]
   }
   route: {
