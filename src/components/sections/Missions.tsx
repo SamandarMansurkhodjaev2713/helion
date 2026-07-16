@@ -133,14 +133,14 @@ export default function Missions() {
     <SectionShell
       id={SECTION_ID.missions}
       atmosphere="accent"
-      className="mx-auto max-w-7xl px-5 py-28 md:px-10 md:py-44"
+      className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading
         eyebrow={t.missions.eyebrow}
         title={t.missions.title}
         titleEmphasis={t.missions.titleEmphasis}
         intro={t.missions.intro}
-        className="mb-14 md:mb-20"
+        className="mb-10 md:mb-20"
       />
 
       <div className="border-t border-white/10">

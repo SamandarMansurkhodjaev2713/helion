@@ -1,31 +1,10 @@
 import { Send, Mail } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { CONTACT, SECTION_ID } from '../../lib/constants'
-import { mapRange } from '../../lib/easing'
 import { useReducedMotion, useViewportProgress } from '../../lib/hooks'
 import Reveal from '../primitives/Reveal'
 import CineButton from '../primitives/CineButton'
-
-/** The rising planet limb — a large arc with a cold rim light that parallaxes
- *  up as the section enters, giving the finale a "horizon reveal". */
-function PlanetHorizon({ progress, reduced }: { progress: number; reduced: boolean }) {
-  const rise = reduced ? 0 : mapRange(progress, 0, 1, 220, -40)
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden">
-      <div
-        className="relative mx-auto aspect-square w-[180vw] max-w-[1600px] rounded-full"
-        style={{
-          transform: `translateY(calc(50% + ${rise}px))`,
-          background:
-            'radial-gradient(closest-side, var(--panel) 55%, var(--void) 100%)',
-          // Cold rim values mirror --accent / --accent-bright (rgba needs a literal alpha).
-          boxShadow:
-            'inset 0 6px 40px rgba(111,211,242,0.16), 0 -1px 0 rgba(169,231,255,0.5), 0 -18px 90px rgba(111,211,242,0.2)',
-        }}
-      />
-    </div>
-  )
-}
+import PlanetRise from '../PlanetRise'
 
 export default function Contact() {
   const { t } = useI18n()
@@ -38,7 +17,7 @@ export default function Contact() {
       id={SECTION_ID.contact}
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-36 text-center"
     >
-      <PlanetHorizon progress={progress} reduced={reduced} />
+      <PlanetRise progress={progress} reduced={reduced} />
 
       <div className="relative z-content mx-auto max-w-3xl">
         <Reveal variant="fade" duration={700}>

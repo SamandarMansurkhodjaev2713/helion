@@ -64,7 +64,8 @@ function LanguageSwitch() {
   )
 }
 
-/** One full-screen menu entry with scramble-on-hover/focus label. */
+/** One full-screen menu entry: a scene slate — SC-number, giant label that
+ *  wipes in via clip-path, a dotted leader line, and the scene caption. */
 function MenuItem({
   index,
   id,
@@ -91,24 +92,30 @@ function MenuItem({
       onMouseEnter={trigger}
       onFocus={trigger}
       data-cursor="link"
-      style={{ transitionDelay: open ? `${120 + index * 70}ms` : '0ms' }}
-      className={`group flex items-baseline gap-4 border-b border-white/5 py-4 transition-all duration-600 ease-cinematic md:gap-8 md:py-6 ${
-        open ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
-      }`}
+      className="group flex flex-col gap-1.5 border-b border-white/5 py-4 md:flex-row md:items-baseline md:gap-6 md:py-6"
     >
-      <span className="font-mono text-[11px] tracking-[0.2em] text-accent/70 md:text-xs">
-        0{index + 1}
+      <span className="flex w-16 shrink-0 items-baseline gap-2 font-mono text-[10px] tracking-[0.2em] text-accent/70 md:text-xs">
+        SC.{pad2(index + 2)}
+        {active && <span aria-hidden className="h-1 w-1 rounded-full bg-accent" />}
       </span>
-      <span className="text-3xl font-extralight uppercase tracking-cine text-bone transition-colors duration-300 group-hover:text-accent md:text-6xl">
-        <ScrambleText ref={scrambleRef} text={label} />
-      </span>
-      <span className="ml-auto hidden font-mono text-[11px] uppercase tracking-[0.18em] text-steel md:block">
-        {caption}
+      <span className="overflow-hidden">
+        <span
+          className="block text-[27px] font-extralight uppercase leading-tight tracking-cine text-bone transition-[clip-path,color] duration-700 ease-cinematic group-hover:text-accent md:text-5xl lg:text-6xl"
+          style={{
+            clipPath: open ? 'inset(0 0 0 0)' : 'inset(0 100% 0 0)',
+            transitionDelay: open ? `${300 + index * 90}ms` : '0ms',
+          }}
+        >
+          <ScrambleText ref={scrambleRef} text={label} />
+        </span>
       </span>
       <span
-        className={`h-1.5 w-1.5 rounded-full md:ml-6 ${active ? 'bg-accent' : 'bg-white/10'}`}
         aria-hidden
+        className="mx-2 hidden flex-1 border-b border-dotted border-white/10 md:block"
       />
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-steel md:text-[11px]">
+        {caption}
+      </span>
     </a>
   )
 }
@@ -269,49 +276,77 @@ export default function CinemaChrome() {
         </span>
       </div>
 
-      {/* ——— Full-screen menu (all devices) ——— */}
+      {/* ——— Full-screen menu (all devices): a film-gate shutter closes over
+              the page, then scene slates wipe in ——— */}
       <div
         aria-hidden={!menuOpen}
-        className={`fixed inset-0 z-overlay flex flex-col justify-center bg-void/[0.98] px-5 pb-16 pt-16 backdrop-blur-2xl transition-opacity duration-500 ease-cinematic md:px-16 ${
-          menuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        className={`fixed inset-0 z-overlay overflow-hidden ${
+          menuOpen ? 'pointer-events-auto' : 'pointer-events-none'
         }`}
       >
-        <nav aria-label={t.nav.menuLabel} className="flex flex-col">
-          {MENU_SECTIONS.map((id, index) => (
-            <MenuItem
-              key={id}
-              index={index}
-              id={id}
-              label={navLabels[id]}
-              caption={menuCaptions[id]}
-              active={active === id}
-              open={menuOpen}
-              onNavigate={() => setMenuOpen(false)}
-            />
-          ))}
-        </nav>
-
+        {/* Shutter halves */}
         <div
-          style={{ transitionDelay: menuOpen ? '520ms' : '0ms' }}
-          className={`mt-10 flex flex-wrap items-center justify-between gap-6 transition-all duration-600 ease-cinematic md:mt-14 ${
-            menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+          className="absolute inset-x-0 top-0 h-1/2 bg-void transition-transform duration-700 ease-cinematic"
+          style={{ transform: menuOpen ? 'translateY(0)' : 'translateY(-101%)' }}
+        />
+        <div
+          className="absolute inset-x-0 bottom-0 h-1/2 bg-void transition-transform duration-700 ease-cinematic"
+          style={{ transform: menuOpen ? 'translateY(0)' : 'translateY(101%)' }}
+        />
+
+        {/* Ghost current-scene number */}
+        <span
+          aria-hidden
+          className={`absolute -bottom-8 right-1 select-none font-mono text-[40vw] leading-none text-white/[0.04] transition-opacity duration-700 md:-bottom-16 md:text-[17vw] ${
+            menuOpen ? 'opacity-100 delay-300' : 'opacity-0'
           }`}
         >
-          <div className="md:hidden">
-            <LanguageSwitch />
-          </div>
-          <CineButton
-            href={CONTACT.telegramUrl}
-            external
-            variant="solid"
-            cursorLabel={CONTACT.telegramHandle}
-            onClick={() => setMenuOpen(false)}
+          {pad2(sceneIndex + 1)}
+        </span>
+
+        {/* Menu content */}
+        <div
+          className={`absolute inset-0 flex flex-col justify-center px-5 pb-14 pt-16 grain transition-opacity duration-500 md:px-16 ${
+            menuOpen ? 'opacity-100 delay-200' : 'opacity-0'
+          }`}
+        >
+          <nav aria-label={t.nav.menuLabel} className="flex flex-col">
+            {MENU_SECTIONS.map((id, index) => (
+              <MenuItem
+                key={id}
+                index={index}
+                id={id}
+                label={navLabels[id]}
+                caption={menuCaptions[id]}
+                active={active === id}
+                open={menuOpen}
+                onNavigate={() => setMenuOpen(false)}
+              />
+            ))}
+          </nav>
+
+          <div
+            style={{ transitionDelay: menuOpen ? '680ms' : '0ms' }}
+            className={`mt-9 flex flex-wrap items-center justify-between gap-6 transition-all duration-600 ease-cinematic md:mt-14 ${
+              menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+            }`}
           >
-            {t.nav.cta}
-          </CineButton>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel/60 md:inline">
-            {TELEMETRY.station} · T+ {formatElapsed(elapsed)}
-          </span>
+            <div className="md:hidden">
+              <LanguageSwitch />
+            </div>
+            <CineButton
+              href={CONTACT.telegramUrl}
+              external
+              variant="solid"
+              cursorLabel={CONTACT.telegramHandle}
+              onClick={() => setMenuOpen(false)}
+            >
+              {t.nav.cta}
+            </CineButton>
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel/60 md:inline">
+              {TELEMETRY.station} · T+ {formatElapsed(elapsed)}
+            </span>
+          </div>
         </div>
       </div>
     </>

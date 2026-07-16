@@ -74,28 +74,152 @@ function SpecRow({ spec, play, delay }: { spec: ShipSpec; play: boolean; delay: 
   )
 }
 
-/** Decorative orbital schematic that drifts slowly; re-keyed per ship change. */
-function ShipSchematic({ shipId }: { shipId: string }) {
-  const reduced = useReducedMotion()
+/** Per-ship line-art: hull paths, optional ring ellipses, accent points and a
+ *  blueprint scale note. Coordinates live in a 240×160 viewBox, hull on y=80. */
+interface BlueprintSpec {
+  paths: string[]
+  ellipses: Array<{ cx: number; cy: number; rx: number; ry: number }>
+  accents: Array<[number, number]>
+  scale: string
+}
+
+const BLUEPRINTS: Record<string, BlueprintSpec> = {
+  aurora: {
+    paths: [
+      'M24 80 H150', // spine
+      'M24 80 H12 M14 74 V86', // nose probe + sensor tick
+      'M150 71 H186 V89 H150 Z', // crew module
+      'M156 76 V84 M162 76 V84 M168 76 V84', // window slits
+      'M186 72 H202 V88 H186 Z', // engine block
+      'M202 74 H212 M202 80 H214 M202 86 H212', // nozzles
+      'M60 71 V54 H70 M60 89 V106 H70', // fore radiators
+      'M124 71 V60 H132 M124 89 V100 H132', // aft radiators
+    ],
+    ellipses: [
+      { cx: 95, cy: 80, rx: 17, ry: 27 }, // habitation ring
+      { cx: 95, cy: 80, rx: 11, ry: 19 },
+    ],
+    accents: [
+      [208, 80],
+      [95, 53],
+    ],
+    scale: 'SCALE 1:400',
+  },
+  vesta: {
+    paths: [
+      'M20 80 H208', // spine
+      'M30 70 H56 V90 H30 Z', // tug head
+      'M30 75 L18 80 L30 85', // nose wedge
+      'M38 74 V86', // cockpit slit
+      'M70 66 H100 V94 H70 Z M70 66 L100 94', // cargo frame 1 + brace
+      'M108 66 H138 V94 H108 Z M108 66 L138 94', // cargo frame 2 + brace
+      'M146 66 H176 V94 H146 Z M146 66 L176 94', // cargo frame 3 + brace
+      'M184 71 H200 V89 H184 Z', // engine block
+      'M200 75 H210 M200 85 H210', // nozzles
+    ],
+    ellipses: [],
+    accents: [
+      [24, 80],
+      [205, 80],
+    ],
+    scale: 'SCALE 1:520',
+  },
+  xerxes: {
+    paths: [
+      'M26 80 L108 68 H176 L206 80 L176 92 H108 Z', // dart fuselage
+      'M116 68 L128 60 H146 L152 68', // canopy
+      'M150 68 L166 50 L174 53 L162 68', // dorsal fin
+      'M150 92 L166 110 L174 107 L162 92', // ventral fin
+      'M26 80 H12', // pitot boom
+      'M206 76 H218 M206 84 H218', // exhaust
+    ],
+    ellipses: [],
+    accents: [[200, 80]],
+    scale: 'SCALE 1:260',
+  },
+}
+
+const BLUEPRINT_TEXT_STYLE = {
+  font: '500 6.5px "JetBrains Mono", monospace',
+  letterSpacing: '0.15em',
+} as const
+
+/** Stagger for the draw-on animation of blueprint line-work. */
+const drawOn = (index: number) => ({
+  animation: `blueprint-draw 800ms var(--ease-cinematic) ${120 + index * 90}ms forwards`,
+})
+
+/** A technical blueprint of the selected ship: dashed drawing frame, dash-dot
+ *  centreline, hull line-work that draws itself on (re-keyed per ship), accent
+ *  beacons and a dimension line with a scale note. */
+function ShipBlueprint({ ship }: { ship: ShipItem }) {
+  const spec = BLUEPRINTS[ship.id] ?? BLUEPRINTS.aurora
   return (
-    <svg
-      key={shipId}
-      viewBox="0 0 200 200"
-      aria-hidden
-      className={`h-full w-full ${reduced ? '' : 'animate-drift-slow'}`}
-    >
-      <g fill="none" stroke="currentColor" className="text-steel/30">
-        <circle cx="100" cy="100" r="78" strokeDasharray="2 6" />
-        <circle cx="100" cy="100" r="56" strokeDasharray="1 5" />
-        <ellipse cx="100" cy="100" rx="90" ry="34" />
-        <ellipse cx="100" cy="100" rx="90" ry="34" transform="rotate(60 100 100)" />
-        <ellipse cx="100" cy="100" rx="90" ry="34" transform="rotate(-60 100 100)" />
+    <svg key={ship.id} viewBox="0 0 240 160" aria-hidden className="h-full w-full">
+      {/* Drawing-sheet chrome */}
+      <g fill="none" stroke="currentColor" className="text-steel/25">
+        <rect x="6" y="6" width="228" height="124" strokeDasharray="3 5" />
       </g>
-      <g className="text-accent">
-        <circle cx="100" cy="100" r="4" fill="currentColor" />
-        <circle cx="190" cy="100" r="2.5" fill="currentColor" />
-        <circle cx="44" cy="56" r="2" fill="currentColor" />
+      <path
+        d="M6 80 H234"
+        fill="none"
+        stroke="currentColor"
+        strokeDasharray="8 5 1.5 5"
+        className="text-steel/20"
+      />
+
+      {/* Hull line-work — draws itself on */}
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-bone/70"
+      >
+        {spec.paths.map((d, index) => (
+          <path
+            key={d}
+            d={d}
+            pathLength={1}
+            strokeDasharray="1"
+            strokeDashoffset={1}
+            style={drawOn(index)}
+          />
+        ))}
+        {spec.ellipses.map((e, index) => (
+          <ellipse
+            key={`${e.cx}-${e.rx}`}
+            cx={e.cx}
+            cy={e.cy}
+            rx={e.rx}
+            ry={e.ry}
+            pathLength={1}
+            strokeDasharray="1"
+            strokeDashoffset={1}
+            style={drawOn(spec.paths.length + index)}
+          />
+        ))}
       </g>
+
+      {/* Beacon points */}
+      <g className="fill-accent">
+        {spec.accents.map(([x, y]) => (
+          <circle key={`${x}-${y}`} cx={x} cy={y} r="2" />
+        ))}
+      </g>
+
+      {/* Dimension line + labels */}
+      <g stroke="currentColor" className="text-steel/50">
+        <path d="M24 142 H96 M144 142 H216" fill="none" />
+        <path d="M24 138 V146 M216 138 V146" fill="none" />
+      </g>
+      <text x="120" y="144.5" textAnchor="middle" className="fill-steel" style={BLUEPRINT_TEXT_STYLE}>
+        {spec.scale}
+      </text>
+      <text x="230" y="18" textAnchor="end" className="fill-steel" style={BLUEPRINT_TEXT_STYLE}>
+        {ship.id.toUpperCase()}
+      </text>
     </svg>
   )
 }
@@ -137,14 +261,14 @@ function ShipDetail({ ship }: { ship: ShipItem }) {
         </div>
       </div>
 
-      {/* Orbital schematic in a ticked instrument frame */}
-      <TiltCard className="mx-auto w-52 md:w-64">
-        <div className="relative aspect-square border border-white/10 p-5 text-steel">
+      {/* Technical blueprint in a ticked instrument frame */}
+      <TiltCard className="mx-auto w-full max-w-[320px] md:w-80 md:max-w-none">
+        <div className="relative aspect-[3/2] border border-white/10 bg-white/[0.015] p-3">
           <InstrumentTick position="-left-px -top-px" />
           <InstrumentTick position="-right-px -top-px" />
           <InstrumentTick position="-left-px -bottom-px" />
           <InstrumentTick position="-right-px -bottom-px" />
-          <ShipSchematic shipId={ship.id} />
+          <ShipBlueprint ship={ship} />
         </div>
       </TiltCard>
     </div>
@@ -248,14 +372,14 @@ export default function Fleet() {
     <SectionShell
       id={SECTION_ID.fleet}
       atmosphere="steel"
-      className="mx-auto max-w-7xl px-5 py-28 md:px-10 md:py-44"
+      className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading
         eyebrow={t.fleet.eyebrow}
         title={t.fleet.title}
         titleEmphasis={t.fleet.titleEmphasis}
         intro={t.fleet.intro}
-        className="mb-14 md:mb-20"
+        className="mb-10 md:mb-20"
       />
 
       <Reveal variant="rise" delay={120}>

@@ -98,7 +98,10 @@ export const STARFIELD = {
   desktop: { far: 150, mid: 60, near: 14, haze: 3 },
   mobile: { far: 70, mid: 30, near: 8, haze: 2 },
   /** Share of mid stars that get a diffraction cross-flare. */
-  flareShare: 0.18,
+  flareShare: 0.22,
+  /** Satellite pass: speed range (px/s) and pause between passes (ms). */
+  satelliteSpeed: [16, 30] as const,
+  satelliteDelay: [14000, 26000] as const,
   /** Camera drift amplitude (px at depth 1) and its two periods (s) — co-prime
    *  periods keep the Lissajous pan from ever visibly repeating. */
   driftAmp: 46,

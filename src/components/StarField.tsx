@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { usePointerFine, useReducedMotion } from '../lib/hooks'
 import { clamp01 } from '../lib/easing'
 import { STARFIELD } from '../lib/constants'
+import { readTokenRgb } from '../lib/colors'
 
 /** A pin-sharp background star (far/mid layers). */
 interface Star {
@@ -52,14 +53,13 @@ interface Meteor {
   trail: number
 }
 
-/** Read a brand colour token from CSS custom properties as an `r, g, b` string. */
-function readRgb(varName: string): string {
-  const hex = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
-  const int = parseInt(hex.replace('#', ''), 16)
-  const r = (int >> 16) & 255
-  const g = (int >> 8) & 255
-  const b = int & 255
-  return `${r}, ${g}, ${b}`
+/** A satellite pass: a slow, steady dot with a blinking beacon. */
+interface Satellite {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  blinkPhase: number
 }
 
 /** Pre-render a soft radial sprite (bokeh disc / glow / haze) once, so the
@@ -114,10 +114,10 @@ export default function StarField() {
     if (!ctx) return
 
     // — Palette: token colours for star tints (accent kept rare) and haze —
-    const ice = readRgb('--ice')
-    const bone = readRgb('--bone')
-    const steel = readRgb('--steel')
-    const accent = readRgb('--accent')
+    const ice = readTokenRgb('--ice')
+    const bone = readTokenRgb('--bone')
+    const steel = readTokenRgb('--steel')
+    const accent = readTokenRgb('--accent')
     const starColors = [ice, ice, bone, bone, steel, accent]
     const SPRITE = 64
     const bokehSprites = starColors.map((rgb) => makeRadialSprite(SPRITE, rgb, 0.85))
@@ -137,6 +137,8 @@ export default function StarField() {
     let hazes: Haze[] = []
     let meteor: Meteor | null = null
     let nextMeteorAt = 0
+    let satellite: Satellite | null = null
+    let nextSatelliteAt = 0
     let raf = 0
     let lastTime = 0
     let lastScrollY = window.scrollY
@@ -175,7 +177,7 @@ export default function StarField() {
           x: Math.random() * width,
           y: Math.random() * height,
           depth,
-          radius: randomBetween(5, 15) * (isMobile ? 0.8 : 1),
+          radius: randomBetween(6, 18) * (isMobile ? 0.8 : 1),
           baseAlpha: randomBetween(0.05, 0.12),
           breathPhase: Math.random() * Math.PI * 2,
           breathSpeed: randomBetween(0.1, 0.22),
@@ -238,7 +240,14 @@ export default function StarField() {
       ),
     })
 
-    const drawStars = (stars: Star[], time: number, camX: number, camY: number, blur: number) => {
+    const drawStars = (
+      stars: Star[],
+      time: number,
+      camX: number,
+      camY: number,
+      blur: number,
+      halo: boolean,
+    ) => {
       for (const star of stars) {
         const { sx, sy } = project(star, camX, camY, 8)
         const twinkle = 0.78 + 0.22 * Math.sin(time * 0.001 * star.twinkleSpeed + star.twinklePhase)
@@ -256,6 +265,14 @@ export default function StarField() {
           ctx.lineTo(sx, sy - streak * Math.sign(velocity))
           ctx.stroke()
           continue
+        }
+
+        // Soft luminous halo under the focused layer — stars glow, not just dot.
+        if (halo && !star.flare && glowSprite) {
+          const reach = star.radius * 3.5
+          ctx.globalAlpha = alpha * 0.35
+          ctx.drawImage(glowSprite, sx - reach, sy - reach, reach * 2, reach * 2)
+          ctx.globalAlpha = 1
         }
 
         ctx.fillStyle = `rgba(${rgb}, ${alpha})`
@@ -303,6 +320,45 @@ export default function StarField() {
         }
       }
       ctx.globalAlpha = 1
+    }
+
+    const spawnSatellite = () => {
+      const speed = randomBetween(...STARFIELD.satelliteSpeed)
+      const fromLeft = Math.random() < 0.5
+      const angle = randomBetween(-12, 12) * (Math.PI / 180)
+      satellite = {
+        x: fromLeft ? -12 : width + 12,
+        y: randomBetween(height * 0.08, height * 0.7),
+        vx: Math.cos(angle) * speed * (fromLeft ? 1 : -1),
+        vy: Math.sin(angle) * speed,
+        blinkPhase: Math.random() * Math.PI * 2,
+      }
+    }
+
+    const drawSatellite = (dt: number, time: number) => {
+      if (!satellite) {
+        if (time >= nextSatelliteAt) spawnSatellite()
+        return
+      }
+      satellite.x += satellite.vx * dt
+      satellite.y += satellite.vy * dt
+      if (satellite.x < -20 || satellite.x > width + 20) {
+        satellite = null
+        nextSatelliteAt = time + randomBetween(...STARFIELD.satelliteDelay)
+        return
+      }
+      // Steady body + a beacon that blinks roughly once a second.
+      ctx.fillStyle = `rgba(${bone}, 0.75)`
+      ctx.beginPath()
+      ctx.arc(satellite.x, satellite.y, 0.9, 0, Math.PI * 2)
+      ctx.fill()
+      const blink = Math.sin(time * 0.006 + satellite.blinkPhase)
+      if (blink > 0.82) {
+        ctx.fillStyle = `rgba(${accent}, ${((blink - 0.82) / 0.18) * 0.9})`
+        ctx.beginPath()
+        ctx.arc(satellite.x, satellite.y, 2.2, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
 
     const drawMeteor = (dt: number, time: number) => {
@@ -361,9 +417,10 @@ export default function StarField() {
 
       ctx.clearRect(0, 0, width, height)
       drawHaze(time)
-      drawStars(farStars, time, camX, camY, blur)
-      drawStars(midStars, time, camX, camY, blur)
+      drawStars(farStars, time, camX, camY, blur, false)
+      drawStars(midStars, time, camX, camY, blur, true)
       drawBokehs(time, camX, camY, blur)
+      drawSatellite(dt, time)
       drawMeteor(dt, time)
 
       raf = requestAnimationFrame(render)
@@ -435,6 +492,7 @@ export default function StarField() {
       drawStatic()
     } else {
       nextMeteorAt = performance.now() + randomBetween(...STARFIELD.meteorFirstDelay)
+      nextSatelliteAt = performance.now() + randomBetween(6000, 12000)
       start()
     }
 

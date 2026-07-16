@@ -16,14 +16,14 @@ export default function Crew() {
     <SectionShell
       id={SECTION_ID.crew}
       atmosphere="accent"
-      className="mx-auto max-w-7xl px-5 py-28 md:px-10 md:py-44"
+      className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
       <SectionHeading
         eyebrow={t.crew.eyebrow}
         title={t.crew.title}
         titleEmphasis={t.crew.titleEmphasis}
         intro={t.crew.intro}
-        className="mb-14 md:mb-20"
+        className="mb-10 md:mb-20"
       />
 
       <div className="border-t border-white/10">

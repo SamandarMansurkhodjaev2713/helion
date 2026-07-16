@@ -45,7 +45,7 @@ export default function Reveal({
   as,
 }: RevealProps) {
   const reduced = useReducedMotion()
-  const [ref, inView] = useInView<HTMLElement>({ once: true, threshold: 0.18 })
+  const [ref, inView] = useInView<HTMLElement>({ once: true, threshold: 0.05 })
   const Tag = (as ?? 'div') as ElementType
 
   const style: CSSProperties = reduced

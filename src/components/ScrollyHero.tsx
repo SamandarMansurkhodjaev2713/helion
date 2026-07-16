@@ -257,7 +257,7 @@ export default function ScrollyHero() {
 
         {/* Bottom fade: the video frame dissolves into the page void — no hard seam
             where the pinned hero hands over to the sections below */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-32 bg-gradient-to-b from-transparent to-void" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-64 bg-gradient-to-b from-transparent via-void/55 to-void md:h-80" />
 
         {/* Mobile readability: gentle full dim + strong top/bottom scrims, so copy
             stays legible even over the brightest parts of the suit */}

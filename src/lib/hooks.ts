@@ -41,21 +41,38 @@ interface InViewOptions {
   once?: boolean
 }
 
+/** True when the element's rect intersects the viewport. `bottomInset` shrinks
+ *  the viewport from below so reveals start a touch before the very edge. */
+function rectInViewport(el: Element, bottomInset: number): boolean {
+  const rect = el.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0) return false
+  return rect.top < window.innerHeight * (1 - bottomInset) && rect.bottom > 0
+}
+
 /**
- * Report whether an element is inside the viewport using IntersectionObserver.
- * The observer disconnects on unmount (and after first hit when `once`), so
- * there are no lingering subscriptions.
+ * Report whether an element is inside the viewport. IntersectionObserver does
+ * the primary work, but one-shot reveals are additionally guaranteed by two
+ * fallbacks — an immediate rect check on mount and a rAF-throttled rect check
+ * on scroll — because a missed IO callback (heavy scroll, some mobile engines)
+ * would otherwise leave content permanently hidden. Everything disconnects on
+ * unmount and as soon as a one-shot reveal fires.
  */
 export function useInView<T extends Element>(
   options: InViewOptions = {},
 ): [RefObject<T>, boolean] {
-  const { threshold = 0.2, rootMargin = '0px 0px -12% 0px', once = true } = options
+  const { threshold = 0, rootMargin = '0px 0px -7% 0px', once = true } = options
   const ref = useRef<T>(null)
   const [inView, setInView] = useState(false)
 
   useEffect(() => {
     const node = ref.current
     if (!node) return
+
+    // Already on screen when we mount (fast scroll, delayed hydration).
+    if (once && rectInViewport(node, 0.05)) {
+      setInView(true)
+      return
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -68,9 +85,29 @@ export function useInView<T extends Element>(
       },
       { threshold, rootMargin },
     )
-
     observer.observe(node)
-    return () => observer.disconnect()
+
+    if (!once) return () => observer.disconnect()
+
+    // Safety net for one-shot reveals: verify the rect on scroll until hit.
+    let frame = 0
+    const check = () => {
+      frame = 0
+      if (!rectInViewport(node, 0.05)) return
+      setInView(true)
+      observer.disconnect()
+      window.removeEventListener('scroll', schedule)
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    window.addEventListener('scroll', schedule, { passive: true })
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', schedule)
+      if (frame) cancelAnimationFrame(frame)
+    }
   }, [threshold, rootMargin, once])
 
   return [ref, inView]
