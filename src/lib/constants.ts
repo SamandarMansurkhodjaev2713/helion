@@ -86,14 +86,33 @@ export const FILM = {
   leaderFrom: 3,
 } as const
 
-/** Starfield density and behaviour, split by viewport so mobile stays light. */
+/**
+ * Deep-space background ("cinematic optics"): layer counts and motion tuning.
+ * Counts are split by viewport so phones stay light; every other value is the
+ * single knob for its effect — retime the whole sky from here.
+ */
 export const STARFIELD = {
-  desktopStars: 220,
-  mobileStars: 90,
   /** Devicepixelratio cap — beyond 2 the extra fill rate isn't worth it. */
   maxDpr: 2,
-  /** Scroll speed (px/frame) at which stars fully stretch into warp streaks. */
-  warpAtVelocity: 55,
-  /** Longest a star streak may grow (px). */
-  maxStreak: 42,
+  /** Layer populations: sharp far points, focused mid stars, bokeh discs, haze blobs. */
+  desktop: { far: 150, mid: 60, near: 14, haze: 3 },
+  mobile: { far: 70, mid: 30, near: 8, haze: 2 },
+  /** Share of mid stars that get a diffraction cross-flare. */
+  flareShare: 0.18,
+  /** Camera drift amplitude (px at depth 1) and its two periods (s) — co-prime
+   *  periods keep the Lissajous pan from ever visibly repeating. */
+  driftAmp: 46,
+  driftPeriodX: 147,
+  driftPeriodY: 181,
+  /** Pointer parallax: max pan (px at depth 1) and per-frame lerp toward it. */
+  pointerPan: 18,
+  pointerLerp: 0.035,
+  /** Page-scroll parallax factor at depth 1. */
+  scrollParallax: 0.06,
+  /** Scroll speed (px/frame) at which motion blur saturates + max streak px. */
+  blurAtVelocity: 60,
+  maxBlur: 34,
+  /** Meteor cadence (ms): first appearance window, then steady-state window. */
+  meteorFirstDelay: [5000, 9000] as const,
+  meteorDelay: [15000, 25000] as const,
 } as const

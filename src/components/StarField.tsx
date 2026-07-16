@@ -1,17 +1,55 @@
 import { useEffect, useRef } from 'react'
-import { useReducedMotion } from '../lib/hooks'
-import { clamp, clamp01 } from '../lib/easing'
+import { usePointerFine, useReducedMotion } from '../lib/hooks'
+import { clamp01 } from '../lib/easing'
 import { STARFIELD } from '../lib/constants'
 
+/** A pin-sharp background star (far/mid layers). */
 interface Star {
   x: number
   y: number
-  /** Depth 0 (far) → 1 (near); scales parallax drift and warp streak length. */
+  /** Depth 0 (far) → 1 (near): scales every parallax source and motion blur. */
   depth: number
   radius: number
   baseAlpha: number
   twinklePhase: number
-  color: string
+  twinkleSpeed: number
+  colorIndex: number
+  /** Bright mid-layer stars get a 4-point diffraction cross. */
+  flare: boolean
+}
+
+/** An out-of-focus foreground star rendered as a soft bokeh disc. */
+interface Bokeh {
+  x: number
+  y: number
+  depth: number
+  radius: number
+  baseAlpha: number
+  /** Phase/speed of the slow "focus breathing" radius oscillation. */
+  breathPhase: number
+  breathSpeed: number
+  colorIndex: number
+}
+
+/** A huge, ultra-soft nebula blob drifting on its own slow orbit. */
+interface Haze {
+  x: number
+  y: number
+  radius: number
+  alpha: number
+  driftPhase: number
+  spriteIndex: number
+}
+
+/** A shooting star: straight run, sine-envelope brightness, then gone. */
+interface Meteor {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  age: number
+  maxAge: number
+  trail: number
 }
 
 /** Read a brand colour token from CSS custom properties as an `r, g, b` string. */
@@ -24,22 +62,50 @@ function readRgb(varName: string): string {
   return `${r}, ${g}, ${b}`
 }
 
+/** Pre-render a soft radial sprite (bokeh disc / glow / haze) once, so the
+ *  frame loop only ever calls drawImage — no per-frame gradient allocation. */
+function makeRadialSprite(size: number, rgb: string, coreAlpha: number): HTMLCanvasElement | null {
+  const sprite = document.createElement('canvas')
+  sprite.width = size
+  sprite.height = size
+  const g = sprite.getContext('2d')
+  if (!g) return null
+  const half = size / 2
+  const grad = g.createRadialGradient(half, half, 0, half, half, half)
+  grad.addColorStop(0, `rgba(${rgb}, ${coreAlpha})`)
+  grad.addColorStop(0.55, `rgba(${rgb}, ${coreAlpha * 0.32})`)
+  grad.addColorStop(1, `rgba(${rgb}, 0)`)
+  g.fillStyle = grad
+  g.fillRect(0, 0, size, size)
+  return sprite
+}
+
+/** Wrap a coordinate into [-pad, max+pad] so drifting sprites re-enter
+ *  seamlessly instead of popping at the viewport edge. */
+function wrap(value: number, max: number, pad: number): number {
+  const range = max + pad * 2
+  return ((((value + pad) % range) + range) % range) - pad
+}
+
+const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
+
 /**
- * A fixed, full-viewport canvas of drifting stars behind the whole page. It is
- * the connective tissue between sections: as the user scrolls, stars stretch
- * into warp streaks proportional to scroll velocity, so every section sits in
- * living space rather than on a flat black.
+ * Deep space through a cinema lens. Three depth layers — pin-sharp far stars,
+ * focused mid stars (the brightest carry a 4-point diffraction cross), and
+ * out-of-focus foreground bokeh discs that slowly "breathe" — plus drifting
+ * nebula haze and a rare meteor. The whole field pans on a never-repeating
+ * Lissajous camera drift; scroll adds depth-scaled parallax and motion blur;
+ * on precise pointers the layers lean subtly toward the cursor.
  *
- * Resilience:
- *  - One rAF loop, paused when the tab is hidden and never started under
- *    reduced-motion (a single static frame is drawn instead).
- *  - DPR is capped and star count scales with viewport, so mobile stays light.
- *  - Canvas size and star field rebuild on resize; all listeners are removed on
- *    unmount.
+ * Resilience: one rAF loop, paused when the tab is hidden and never started
+ * under reduced motion (a single static frame is drawn instead, and redrawn on
+ * resize). Sprites are pre-rendered; DPR is capped; counts shrink on mobile.
+ * Every listener/rAF is cleaned up on unmount.
  */
 export default function StarField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const reduced = useReducedMotion()
+  const pointerFine = usePointerFine()
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -47,36 +113,279 @@ export default function StarField() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const accentRgb = readRgb('--accent')
-    const iceRgb = readRgb('--ice')
-    const boneRgb = readRgb('--bone')
-    const steelRgb = readRgb('--steel')
-    const colorRamp = [iceRgb, iceRgb, boneRgb, steelRgb, accentRgb]
+    // — Palette: token colours for star tints (accent kept rare) and haze —
+    const ice = readRgb('--ice')
+    const bone = readRgb('--bone')
+    const steel = readRgb('--steel')
+    const accent = readRgb('--accent')
+    const starColors = [ice, ice, bone, bone, steel, accent]
+    const SPRITE = 64
+    const bokehSprites = starColors.map((rgb) => makeRadialSprite(SPRITE, rgb, 0.85))
+    const glowSprite = makeRadialSprite(SPRITE, ice, 0.5)
+    const hazeSprites = [
+      makeRadialSprite(512, steel, 0.05),
+      makeRadialSprite(512, ice, 0.04),
+      makeRadialSprite(512, accent, 0.03),
+    ]
 
     let dpr = 1
     let width = 0
     let height = 0
-    let stars: Star[] = []
+    let farStars: Star[] = []
+    let midStars: Star[] = []
+    let bokehs: Bokeh[] = []
+    let hazes: Haze[] = []
+    let meteor: Meteor | null = null
+    let nextMeteorAt = 0
     let raf = 0
+    let lastTime = 0
     let lastScrollY = window.scrollY
     let velocity = 0
+    // Pointer parallax: target follows the cursor, pan eases after it.
+    let panTargetX = 0
+    let panTargetY = 0
+    let panX = 0
+    let panY = 0
 
-    const buildStars = () => {
+    const makeStar = (depthMin: number, depthMax: number, flareShare: number): Star => {
+      const depth = randomBetween(depthMin, depthMax)
+      return {
+        x: Math.random() * width,
+        y: Math.random() * height,
+        depth,
+        radius: 0.4 + depth * 0.9,
+        baseAlpha: 0.2 + depth * 0.5,
+        twinklePhase: Math.random() * Math.PI * 2,
+        twinkleSpeed: randomBetween(0.4, 1.1),
+        colorIndex: Math.floor(Math.random() * starColors.length),
+        flare: Math.random() < flareShare,
+      }
+    }
+
+    const buildField = () => {
       const isMobile = window.matchMedia('(max-width: 768px)').matches
-      const count = isMobile ? STARFIELD.mobileStars : STARFIELD.desktopStars
-      stars = Array.from({ length: count }, () => {
-        const depth = Math.random()
-        const rgb = colorRamp[Math.floor(Math.random() * colorRamp.length)]
+      const counts = isMobile ? STARFIELD.mobile : STARFIELD.desktop
+      farStars = Array.from({ length: counts.far }, () => makeStar(0.15, 0.45, 0))
+      midStars = Array.from({ length: counts.mid }, () =>
+        makeStar(0.45, 0.75, STARFIELD.flareShare),
+      )
+      bokehs = Array.from({ length: counts.near }, () => {
+        const depth = randomBetween(0.75, 1)
         return {
           x: Math.random() * width,
           y: Math.random() * height,
           depth,
-          radius: 0.4 + depth * 1.3,
-          baseAlpha: 0.15 + depth * 0.55,
-          twinklePhase: Math.random() * Math.PI * 2,
-          color: rgb,
+          radius: randomBetween(5, 15) * (isMobile ? 0.8 : 1),
+          baseAlpha: randomBetween(0.05, 0.12),
+          breathPhase: Math.random() * Math.PI * 2,
+          breathSpeed: randomBetween(0.1, 0.22),
+          colorIndex: Math.floor(Math.random() * starColors.length),
         }
       })
+      hazes = Array.from({ length: counts.haze }, (_, i) => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: randomBetween(0.5, 0.8) * Math.max(width, height),
+        alpha: randomBetween(0.5, 0.9),
+        driftPhase: Math.random() * Math.PI * 2,
+        spriteIndex: i % hazeSprites.length,
+      }))
+    }
+
+    const spawnMeteor = () => {
+      const angle = randomBetween(25, 45) * (Math.PI / 180)
+      const direction = Math.random() < 0.5 ? 1 : -1
+      const speed = randomBetween(850, 1350)
+      meteor = {
+        x: direction > 0 ? randomBetween(-60, width * 0.5) : randomBetween(width * 0.5, width + 60),
+        y: randomBetween(-30, height * 0.4),
+        vx: Math.cos(angle) * speed * direction,
+        vy: Math.sin(angle) * speed,
+        age: 0,
+        maxAge: randomBetween(0.9, 1.4),
+        trail: randomBetween(140, 220),
+      }
+    }
+
+    // — Draw helpers (shared by the live loop and the static fallback) —
+
+    const drawHaze = (time: number) => {
+      for (const haze of hazes) {
+        const sprite = hazeSprites[haze.spriteIndex]
+        if (!sprite) continue
+        const t = time * 0.001
+        const dx = Math.sin(t * 0.008 + haze.driftPhase) * width * 0.04
+        const dy = Math.cos(t * 0.006 + haze.driftPhase) * height * 0.05
+        ctx.globalAlpha = haze.alpha
+        ctx.drawImage(
+          sprite,
+          haze.x + dx - haze.radius,
+          haze.y + dy - haze.radius,
+          haze.radius * 2,
+          haze.radius * 2,
+        )
+      }
+      ctx.globalAlpha = 1
+    }
+
+    /** Screen position of a field object after every parallax source. */
+    const project = (obj: { x: number; y: number; depth: number }, camX: number, camY: number, pad: number) => ({
+      sx: wrap(obj.x + (camX + panX) * obj.depth, width, pad),
+      sy: wrap(
+        obj.y + (camY + panY * 0.6) * obj.depth + window.scrollY * STARFIELD.scrollParallax * obj.depth,
+        height,
+        pad,
+      ),
+    })
+
+    const drawStars = (stars: Star[], time: number, camX: number, camY: number, blur: number) => {
+      for (const star of stars) {
+        const { sx, sy } = project(star, camX, camY, 8)
+        const twinkle = 0.78 + 0.22 * Math.sin(time * 0.001 * star.twinkleSpeed + star.twinklePhase)
+        const alpha = clamp01(star.baseAlpha * twinkle)
+        const rgb = starColors[star.colorIndex]
+        const streak = blur * star.depth
+
+        if (streak > 2) {
+          // Motion blur: the star smears opposite the scroll direction.
+          ctx.strokeStyle = `rgba(${rgb}, ${alpha})`
+          ctx.lineWidth = star.radius * 2
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(sx, sy - streak * Math.sign(velocity))
+          ctx.stroke()
+          continue
+        }
+
+        ctx.fillStyle = `rgba(${rgb}, ${alpha})`
+        ctx.beginPath()
+        ctx.arc(sx, sy, star.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        if (star.flare) {
+          // 4-point diffraction cross + a soft halo, like a lens catching light.
+          const reach = star.radius * (5 + twinkle * 3)
+          if (glowSprite) {
+            ctx.globalAlpha = alpha * 0.55
+            ctx.drawImage(glowSprite, sx - reach, sy - reach, reach * 2, reach * 2)
+            ctx.globalAlpha = 1
+          }
+          ctx.strokeStyle = `rgba(${bone}, ${alpha * 0.5})`
+          ctx.lineWidth = 0.7
+          ctx.beginPath()
+          ctx.moveTo(sx - reach, sy)
+          ctx.lineTo(sx + reach, sy)
+          ctx.moveTo(sx, sy - reach)
+          ctx.lineTo(sx, sy + reach)
+          ctx.stroke()
+        }
+      }
+    }
+
+    const drawBokehs = (time: number, camX: number, camY: number, blur: number) => {
+      for (const disc of bokehs) {
+        const sprite = bokehSprites[disc.colorIndex]
+        if (!sprite) continue
+        // Slow focus breathing: the disc swells and settles like a lens hunting.
+        const breath = 1 + 0.12 * Math.sin(time * 0.001 * disc.breathSpeed + disc.breathPhase)
+        const radius = disc.radius * breath
+        const { sx, sy } = project(disc, camX, camY, radius + 6)
+        const streak = blur * disc.depth
+
+        ctx.globalAlpha = disc.baseAlpha
+        ctx.drawImage(sprite, sx - radius, sy - radius, radius * 2, radius * 2)
+        if (streak > 3) {
+          // Double exposure sells the motion blur on out-of-focus discs.
+          ctx.globalAlpha = disc.baseAlpha * 0.5
+          const offset = streak * Math.sign(velocity)
+          ctx.drawImage(sprite, sx - radius, sy - offset - radius, radius * 2, radius * 2)
+        }
+      }
+      ctx.globalAlpha = 1
+    }
+
+    const drawMeteor = (dt: number, time: number) => {
+      if (!meteor) {
+        if (time >= nextMeteorAt) spawnMeteor()
+        return
+      }
+      meteor.age += dt
+      if (meteor.age >= meteor.maxAge) {
+        meteor = null
+        nextMeteorAt = time + randomBetween(...STARFIELD.meteorDelay)
+        return
+      }
+      meteor.x += meteor.vx * dt
+      meteor.y += meteor.vy * dt
+      // Sine envelope: fade in, burn, fade out.
+      const glow = Math.sin(Math.PI * (meteor.age / meteor.maxAge))
+      const speed = Math.hypot(meteor.vx, meteor.vy)
+      const tailX = meteor.x - (meteor.vx / speed) * meteor.trail
+      const tailY = meteor.y - (meteor.vy / speed) * meteor.trail
+      const gradient = ctx.createLinearGradient(meteor.x, meteor.y, tailX, tailY)
+      gradient.addColorStop(0, `rgba(${bone}, ${0.85 * glow})`)
+      gradient.addColorStop(0.25, `rgba(${accent}, ${0.4 * glow})`)
+      gradient.addColorStop(1, `rgba(${accent}, 0)`)
+      ctx.strokeStyle = gradient
+      ctx.lineWidth = 1.4
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(meteor.x, meteor.y)
+      ctx.lineTo(tailX, tailY)
+      ctx.stroke()
+      ctx.fillStyle = `rgba(${bone}, ${glow})`
+      ctx.beginPath()
+      ctx.arc(meteor.x, meteor.y, 1.3, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const render = (time: number) => {
+      const dt = Math.min(0.05, lastTime ? (time - lastTime) / 1000 : 0.016)
+      lastTime = time
+
+      // Smoothed scroll velocity → depth-scaled motion blur.
+      const y = window.scrollY
+      velocity = velocity * 0.82 + (y - lastScrollY) * 0.18
+      lastScrollY = y
+      const blur = clamp01(Math.abs(velocity) / STARFIELD.blurAtVelocity) * STARFIELD.maxBlur
+
+      // Never-repeating Lissajous camera drift.
+      const t = time * 0.001
+      const camX = Math.sin((t * Math.PI * 2) / STARFIELD.driftPeriodX) * STARFIELD.driftAmp
+      const camY = Math.sin((t * Math.PI * 2) / STARFIELD.driftPeriodY) * STARFIELD.driftAmp * 0.6
+
+      // Pointer pan eases toward its target — a heavy, cinematic follow.
+      panX += (panTargetX - panX) * STARFIELD.pointerLerp
+      panY += (panTargetY - panY) * STARFIELD.pointerLerp
+
+      ctx.clearRect(0, 0, width, height)
+      drawHaze(time)
+      drawStars(farStars, time, camX, camY, blur)
+      drawStars(midStars, time, camX, camY, blur)
+      drawBokehs(time, camX, camY, blur)
+      drawMeteor(dt, time)
+
+      raf = requestAnimationFrame(render)
+    }
+
+    /** Reduced-motion fallback: one considered still frame, no loop. */
+    const drawStatic = () => {
+      ctx.clearRect(0, 0, width, height)
+      drawHaze(0)
+      for (const star of [...farStars, ...midStars]) {
+        ctx.fillStyle = `rgba(${starColors[star.colorIndex]}, ${clamp01(star.baseAlpha)})`
+        ctx.beginPath()
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      for (const disc of bokehs) {
+        const sprite = bokehSprites[disc.colorIndex]
+        if (!sprite) continue
+        ctx.globalAlpha = disc.baseAlpha
+        ctx.drawImage(sprite, disc.x - disc.radius, disc.y - disc.radius, disc.radius * 2, disc.radius * 2)
+      }
+      ctx.globalAlpha = 1
     }
 
     const resize = () => {
@@ -88,64 +397,15 @@ export default function StarField() {
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      buildStars()
-      // Resize clears the canvas; the animation loop repaints next frame, but the
+      buildField()
+      // Resize clears the canvas; the loop repaints next frame, but the
       // reduced-motion path draws only once, so redraw it here.
       if (reduced) drawStatic()
     }
 
-    const drawStar = (star: Star, streak: number, time: number) => {
-      const twinkle = 0.75 + 0.25 * Math.sin(time * 0.001 + star.twinklePhase)
-      const alpha = clamp01(star.baseAlpha * twinkle)
-      const paint = star.color
-
-      if (streak > 1) {
-        // Warp streak: draw a fading line opposite the scroll direction.
-        const len = streak * (0.35 + star.depth)
-        const dir = Math.sign(velocity)
-        ctx.strokeStyle = `rgba(${paint}, ${alpha})`
-        ctx.lineWidth = star.radius
-        ctx.beginPath()
-        ctx.moveTo(star.x, star.y)
-        ctx.lineTo(star.x, star.y - len * dir)
-        ctx.stroke()
-      } else {
-        ctx.fillStyle = `rgba(${paint}, ${alpha})`
-        ctx.beginPath()
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-
-    const render = (time: number) => {
-      // Smoothed scroll velocity → warp intensity.
-      const y = window.scrollY
-      velocity = velocity * 0.82 + (y - lastScrollY) * 0.18
-      lastScrollY = y
-      const warp = clamp(Math.abs(velocity) / STARFIELD.warpAtVelocity, 0, 1) * STARFIELD.maxStreak
-
-      ctx.clearRect(0, 0, width, height)
-      for (const star of stars) {
-        // Gentle ambient parallax drift — nearer stars drift a touch faster.
-        star.y += 0.02 + star.depth * 0.04
-        if (star.y > height) star.y = 0
-        drawStar(star, warp * star.depth, time)
-      }
-      raf = requestAnimationFrame(render)
-    }
-
-    const drawStatic = () => {
-      ctx.clearRect(0, 0, width, height)
-      for (const star of stars) {
-        ctx.fillStyle = `rgba(${star.color}, ${clamp01(star.baseAlpha)})`
-        ctx.beginPath()
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-
     const start = () => {
       if (raf) return
+      lastTime = 0
       raf = requestAnimationFrame(render)
     }
     const stop = () => {
@@ -159,13 +419,22 @@ export default function StarField() {
       else if (!reduced) start()
     }
 
+    const onPointerMove = (event: PointerEvent) => {
+      panTargetX = (event.clientX / width - 0.5) * 2 * STARFIELD.pointerPan
+      panTargetY = (event.clientY / height - 0.5) * 2 * STARFIELD.pointerPan
+    }
+
     resize()
     window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', onVisibility)
+    if (!reduced && pointerFine) {
+      window.addEventListener('pointermove', onPointerMove, { passive: true })
+    }
 
     if (reduced) {
       drawStatic()
     } else {
+      nextMeteorAt = performance.now() + randomBetween(...STARFIELD.meteorFirstDelay)
       start()
     }
 
@@ -173,8 +442,9 @@ export default function StarField() {
       stop()
       window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pointermove', onPointerMove)
     }
-  }, [reduced])
+  }, [reduced, pointerFine])
 
   return (
     <canvas
