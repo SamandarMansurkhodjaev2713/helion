@@ -399,7 +399,6 @@ export default function Fleet() {
     <SectionShell
       id={SECTION_ID.fleet}
       atmosphere="steel"
-      light="top"
       scene={SCENE_NO[SECTION_ID.fleet]}
       className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >

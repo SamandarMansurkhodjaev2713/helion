@@ -12,6 +12,7 @@ import {
 import SectionHeading from '../primitives/SectionHeading'
 import LineReveal from '../primitives/LineReveal'
 import GhostScene from '../primitives/GhostScene'
+import ChapterRule from '../primitives/ChapterRule'
 
 /** Total expedition days the progress readout counts through. */
 const MISSION_DAYS = 1460
@@ -253,6 +254,7 @@ export default function Route() {
     return (
       <section id={SECTION_ID.route} className="relative mx-auto max-w-4xl px-5 py-24 md:px-10">
         <GhostScene scene={SCENE_NO[SECTION_ID.route]} progress={0.5} />
+        <ChapterRule scene={SCENE_NO[SECTION_ID.route]} className="mb-10 md:mb-14" />
         <SectionHeading
           eyebrow={t.route.eyebrow}
           title={t.route.title}
@@ -277,7 +279,10 @@ export default function Route() {
           <GhostScene scene={SCENE_NO[SECTION_ID.route]} progress={progress} />
 
           {/* Header + running expedition clock */}
-          <div className="mx-auto flex w-full max-w-7xl items-end justify-between px-5 pt-24 md:px-10 md:pt-28">
+          <div className="mx-auto w-full max-w-7xl px-5 pt-20 md:px-10 md:pt-24">
+            <ChapterRule scene={SCENE_NO[SECTION_ID.route]} className="mb-8 md:mb-10" />
+          </div>
+          <div className="mx-auto flex w-full max-w-7xl items-end justify-between px-5 md:px-10">
             <SectionHeading
               eyebrow={t.route.eyebrow}
               title={t.route.title}

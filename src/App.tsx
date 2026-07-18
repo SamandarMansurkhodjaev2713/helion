@@ -6,6 +6,7 @@ import { usePointerFine, useReducedMotion } from './lib/hooks'
 import FilmLeader from './components/FilmLeader'
 import HudCursor from './components/HudCursor'
 import StarField from './components/StarField'
+import SceneLight from './components/SceneLight'
 import CinemaChrome from './components/CinemaChrome'
 import ScrollyHero from './components/ScrollyHero'
 import StaticHero from './components/StaticHero'
@@ -46,6 +47,8 @@ export default function App() {
         <FilmLeader />
         <HudCursor />
         <StarField />
+        {/* Lighting belongs to the page, not to any section — see SceneLight */}
+        <SceneLight />
         <CinemaChrome />
 
         <main className="relative z-10">

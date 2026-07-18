@@ -295,7 +295,6 @@ export default function Missions() {
     <SectionShell
       id={SECTION_ID.missions}
       atmosphere="accent"
-      light="left"
       scene={SCENE_NO[SECTION_ID.missions]}
       className="mx-auto max-w-7xl px-5 py-24 md:px-10 md:py-44"
     >
