@@ -2,24 +2,30 @@ import { useEffect, useRef, useState } from 'react'
 import { usePointerFine, useReducedMotion } from '../lib/hooks'
 import { lerp } from '../lib/easing'
 import { MOTION } from '../lib/constants'
+import { useI18n } from '../i18n'
+
+/** What the reticle is currently locked onto. */
+type LockKind = 'idle' | 'link' | 'cta' | 'card' | 'tab' | 'expand' | 'media'
 
 /**
  * A themed "targeting reticle" cursor for precise pointers. It replaces the OS
  * cursor with a HUD visor: a fast dot, an inertial ring that locks onto
- * interactive elements, and a live coordinate readout.
+ * interactive elements — scaling to the target and naming the *action* it
+ * offers ("ОТКРЫТЬ", "СМОТРЕТЬ", "ВЫБРАТЬ") — and a live coordinate readout
+ * whenever nothing is under it.
  *
  * Performance notes:
  *  - Position and the coordinate text are written straight to the DOM inside a
  *    single rAF loop, so pointer movement never triggers a React re-render.
- *  - The only React state is the discrete hover mode (idle vs. locked), which
- *    flips at most once per element the pointer crosses.
+ *  - The only React state is the discrete lock kind and its label, which flip
+ *    at most once per element the pointer crosses.
  *  - Everything is torn down on unmount; the `has-custom-cursor` html flag that
  *    hides the native cursor is removed too.
  *
- * It renders nothing on touch/coarse pointers or under reduced-motion, where a
- * bespoke cursor is either impossible or unwanted.
+ * Renders nothing on touch/coarse pointers or under reduced motion.
  */
 export default function HudCursor() {
+  const { t } = useI18n()
   const fine = usePointerFine()
   const reduced = useReducedMotion()
   const enabled = fine && !reduced
@@ -28,8 +34,20 @@ export default function HudCursor() {
   const ringRef = useRef<HTMLDivElement>(null)
   const readoutRef = useRef<HTMLSpanElement>(null)
 
-  const [locked, setLocked] = useState(false)
+  const [lock, setLock] = useState<LockKind>('idle')
   const [label, setLabel] = useState<string | null>(null)
+
+  // The verb shown per lock kind — the cursor becomes part of the interface
+  // language rather than a decorative dot.
+  const verbs: Record<LockKind, string | null> = {
+    idle: null,
+    link: null,
+    cta: t.cursor.contact,
+    card: t.cursor.view,
+    tab: t.cursor.select,
+    expand: t.cursor.open,
+    media: t.cursor.view,
+  }
 
   useEffect(() => {
     if (!enabled) return
@@ -61,7 +79,7 @@ export default function HudCursor() {
     const onOver = (event: PointerEvent) => {
       const el = (event.target as Element | null)?.closest<HTMLElement>('[data-cursor]')
       if (el) {
-        setLocked(true)
+        setLock((el.dataset.cursor as LockKind) || 'link')
         setLabel(el.dataset.cursorLabel ?? null)
       }
     }
@@ -69,7 +87,7 @@ export default function HudCursor() {
       const from = (event.target as Element | null)?.closest<HTMLElement>('[data-cursor]')
       const to = (event.relatedTarget as Element | null)?.closest<HTMLElement>('[data-cursor]')
       if (from && from !== to) {
-        setLocked(false)
+        setLock('idle')
         setLabel(null)
       }
     }
@@ -111,8 +129,16 @@ export default function HudCursor() {
 
   if (!enabled) return null
 
+  const locked = lock !== 'idle'
+  // Media and cards get a wider reticle; small controls a tighter one.
+  const size = lock === 'card' || lock === 'media' ? 86 : locked ? 58 : 32
+  const caption = label ?? verbs[lock]
+
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-cursor hidden [html.cursor-visible_&]:block">
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-cursor hidden [html.cursor-visible_&]:block"
+    >
       {/* Fast centre dot */}
       <div
         ref={dotRef}
@@ -123,18 +149,29 @@ export default function HudCursor() {
       {/* Inertial targeting ring + crosshair + corner ticks + readout */}
       <div
         ref={ringRef}
-        className="fixed left-0 top-0 transition-[width,height,opacity] duration-300 ease-cinematic"
-        style={{ width: locked ? 64 : 34, height: locked ? 64 : 34 }}
+        className="fixed left-0 top-0 transition-[width,height] duration-500 ease-cinematic"
+        style={{ width: size, height: size }}
       >
         <div className="relative h-full w-full">
-          {/* Ring */}
+          {/* Ring — a circle when idle, squaring off as it locks on */}
           <div
-            className="absolute inset-0 rounded-full border transition-colors duration-300"
-            style={{ borderColor: locked ? 'var(--accent)' : 'rgba(157, 187, 214, 0.55)' }}
+            className="absolute inset-0 transition-all duration-500 ease-cinematic"
+            style={{
+              border: '1px solid',
+              borderColor: locked ? 'var(--accent)' : 'rgba(157, 187, 214, 0.5)',
+              borderRadius: locked ? '2px' : '9999px',
+              opacity: locked ? 0.9 : 0.75,
+            }}
           />
-          {/* Crosshair */}
-          <span className="absolute left-1/2 top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-ice/50" />
-          <span className="absolute left-1/2 top-1/2 h-px w-2 -translate-x-1/2 -translate-y-1/2 bg-ice/50" />
+          {/* Crosshair fades out once a target is acquired */}
+          <span
+            className="absolute left-1/2 top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-ice/50 transition-opacity duration-300"
+            style={{ opacity: locked ? 0 : 1 }}
+          />
+          <span
+            className="absolute left-1/2 top-1/2 h-px w-2 -translate-x-1/2 -translate-y-1/2 bg-ice/50 transition-opacity duration-300"
+            style={{ opacity: locked ? 0 : 1 }}
+          />
           {/* Corner ticks appear when locked */}
           <div
             className="absolute -inset-1 transition-opacity duration-300"
@@ -143,7 +180,7 @@ export default function HudCursor() {
             {['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0'].map((pos) => (
               <span
                 key={pos}
-                className={`absolute ${pos} h-1.5 w-1.5 border-accent`}
+                className={`absolute ${pos} h-2 w-2 border-accent`}
                 style={{
                   borderTopWidth: pos.includes('top') ? 1 : 0,
                   borderBottomWidth: pos.includes('bottom') ? 1 : 0,
@@ -155,10 +192,10 @@ export default function HudCursor() {
           </div>
         </div>
 
-        {/* Live coordinate / label readout, offset from the ring */}
+        {/* Action verb while locked, live coordinates while idle */}
         <div className="absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.2em]">
-          {label ? (
-            <span className="text-accent-bright">{label}</span>
+          {caption ? (
+            <span className="text-accent-bright">{caption}</span>
           ) : (
             <span ref={readoutRef} className="text-ice/45" />
           )}

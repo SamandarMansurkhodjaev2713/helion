@@ -1,5 +1,4 @@
-import { useInView, useReducedMotion } from '../../lib/hooks'
-import Reveal from './Reveal'
+import LineReveal from './LineReveal'
 
 interface SectionHeadingProps {
   eyebrow: string
@@ -13,9 +12,10 @@ interface SectionHeadingProps {
 
 /**
  * The shared section header, staged like a film title card: a mono slate line,
- * then the title rises from under a mask while its letter-spacing "lands" from
- * extra-wide into place (a classic cinema-titles move), a hairline wipes in,
- * and the lead paragraph follows. Instant under reduced motion.
+ * the title in the site's one entrance gesture (lines rising from under a
+ * mask), a hairline, then the lead paragraph — each beat a step behind the
+ * last. The title uses the fluid `.title-cine-lg` scale, so it reads as a
+ * poster on a monitor and still fits a 375px phone.
  */
 export default function SectionHeading({
   eyebrow,
@@ -26,54 +26,32 @@ export default function SectionHeading({
   className = '',
 }: SectionHeadingProps) {
   const centered = align === 'center'
-  const reduced = useReducedMotion()
-  const [titleRef, titleIn] = useInView<HTMLHeadingElement>({ once: true, threshold: 0.05 })
-  const shown = titleIn || reduced
 
   return (
     <div
       className={`flex flex-col ${centered ? 'items-center text-center' : 'items-start text-left'} ${className}`}
     >
-      <Reveal variant="fade" duration={700}>
-        <span className="font-mono text-[10px] uppercase tracking-telemetry text-steel md:text-[11px]">
+      <LineReveal stagger={90} className="w-full">
+        <span className="block font-mono text-[10px] uppercase tracking-telemetry text-steel md:text-[11px]">
           {eyebrow}
         </span>
-      </Reveal>
 
-      {/* Masked title: rises from below the line while the tracking settles */}
-      <h2
-        ref={titleRef}
-        className="mt-5 max-w-[26ch] overflow-hidden text-[26px] font-extralight uppercase leading-[1.4] tracking-cine text-bone sm:text-4xl md:mt-7 md:text-5xl md:tracking-[0.18em]"
-      >
-        <span
-          className="block will-change-transform"
-          style={{
-            transform: shown ? 'translateY(0)' : 'translateY(112%)',
-            opacity: shown ? 1 : 0,
-            // While hidden the line is tracked extra-wide; removing the inline
-            // value lets it transition back to the class tracking — "landing".
-            letterSpacing: shown ? undefined : '0.34em',
-            transition:
-              'transform 950ms var(--ease-cinematic) 80ms, letter-spacing 1250ms var(--ease-cinematic) 80ms, opacity 500ms linear 80ms',
-          }}
-        >
+        <h2 className="title-cine-lg mt-5 max-w-[22ch] text-bone md:mt-7">
           {title} <span className="text-accent">{titleEmphasis}</span>
+        </h2>
+
+        <span className={`mt-7 block h-px w-full max-w-md ${centered ? 'mx-auto' : ''}`}>
+          <span className="hairline block" />
         </span>
-      </h2>
 
-      <Reveal variant="clip" delay={260} duration={800} className="mt-7 w-full max-w-md">
-        <div className="hairline" />
-      </Reveal>
-
-      <Reveal variant="rise" delay={330} className="mt-6">
         <p
-          className={`max-w-[52ch] text-sm leading-relaxed text-bone/60 md:text-base ${
+          className={`mt-6 block max-w-[52ch] text-sm leading-relaxed text-bone/60 md:text-base ${
             centered ? 'mx-auto' : ''
           }`}
         >
           {intro}
         </p>
-      </Reveal>
+      </LineReveal>
     </div>
   )
 }

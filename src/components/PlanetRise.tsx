@@ -82,6 +82,13 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
       if (!texture || width === 0 || height === 0 || radius <= 2) return
       ctx.clearRect(0, 0, width, height)
 
+      // Occlusion: paint the disc in void first so the page's starfield cannot
+      // shine through the planet. Mars sits *in* the space, not on top of it.
+      ctx.fillStyle = `rgb(${voidRgb})`
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+      ctx.fill()
+
       // Body: wrapped texture inside the sphere clip, then lighting.
       ctx.save()
       ctx.beginPath()

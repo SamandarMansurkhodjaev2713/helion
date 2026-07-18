@@ -9,13 +9,17 @@ interface GhostSceneProps {
   className?: string
 }
 
+/** Duration of the chalk stroke drawing itself across the digits. */
+const DRAW_MS = 900
+
 /**
- * The section's ghost watermark: a giant mono scene number behind the content.
- * On first entry it "stamps" in (scales down from 112% while fading up), then
- * drifts on scroll at its own speed — a depth layer between the starfield and
- * the content. The drift lives on an outer layer with no transition (so scroll
- * tracks 1:1) while the one-shot stamp animates an inner layer. Decorative
- * only; static under reduced motion.
+ * The section's ghost watermark: a giant scene number that draws itself in
+ * outline — like chalk on a clapperboard — then settles into a faint fill and
+ * drifts on scroll as the deepest content layer.
+ *
+ * The drift lives on an outer layer with no transition (so scroll tracks 1:1)
+ * while the one-shot draw animates the SVG stroke inside. Decorative only, and
+ * static under reduced motion.
  */
 export default function GhostScene({ scene, progress, className = '' }: GhostSceneProps) {
   const reduced = useReducedMotion()
@@ -31,21 +35,46 @@ export default function GhostScene({ scene, progress, className = '' }: GhostSce
     >
       {/* Drift layer — follows scroll instantly */}
       <span
-        className="absolute right-[-3vw] top-1/2 will-change-transform"
+        className="absolute right-[-4vw] top-1/2 block w-[92vw] -translate-y-1/2 will-change-transform md:w-[46vw]"
         style={{ transform: `translateY(calc(-50% + ${drift.toFixed(1)}px))` }}
       >
-        {/* Stamp layer — one-shot entrance */}
-        <span
-          className="block font-mono text-[44vw] font-light leading-none text-white/[0.04] md:text-[24vw]"
-          style={{
-            transform: `scale(${shown ? 1 : 1.12})`,
-            opacity: shown ? 1 : 0,
-            transition:
-              'opacity 1000ms var(--ease-cinematic), transform 1000ms var(--ease-cinematic)',
-          }}
-        >
-          {scene}
-        </span>
+        <svg viewBox="0 0 200 130" className="h-auto w-full">
+          {/* Chalk outline draws itself, then the fill fades up behind it */}
+          <text
+            x="100"
+            y="104"
+            textAnchor="middle"
+            fill="currentColor"
+            className="text-white/[0.035]"
+            style={{
+              font: '300 130px "JetBrains Mono", monospace',
+              opacity: shown ? 1 : 0,
+              transition: `opacity 900ms var(--ease-cinematic) ${DRAW_MS * 0.55}ms`,
+            }}
+          >
+            {scene}
+          </text>
+          <text
+            x="100"
+            y="104"
+            textAnchor="middle"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.6"
+            pathLength={1}
+            className="text-accent/25"
+            style={{
+              font: '300 130px "JetBrains Mono", monospace',
+              strokeDasharray: 1,
+              strokeDashoffset: shown ? 0 : 1,
+              transition: reduced
+                ? undefined
+                : `stroke-dashoffset ${DRAW_MS}ms var(--ease-cinematic)`,
+            }}
+          >
+            {scene}
+          </text>
+        </svg>
       </span>
     </div>
   )

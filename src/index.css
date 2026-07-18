@@ -16,6 +16,9 @@
   --accent: #6fd3f2;
   --accent-bright: #a9e7ff;
   --accent-deep: #3e9fc4;
+  --mars: #e09a6a;
+  --mars-bright: #ffd8b2;
+  --mars-deep: #b56b3e;
   --steel: #6e8ba6;
   --ice: #9dbbd6;
   --bone: #ece6da;
@@ -79,6 +82,28 @@ html.lenis body {
 /* Shared cinematic reveal easing for scroll-triggered text */
 .reveal-ease {
   transition-timing-function: var(--ease-cinematic);
+}
+
+/*
+ * Touch ergonomics: small text links stay visually small but grow an invisible
+ * 44px hit area on coarse pointers, so nothing on a phone is hard to tap.
+ * Desktop layout is untouched — the pseudo-element only exists under the media
+ * query, and it never intercepts anything outside its own control.
+ */
+@media (pointer: coarse) {
+  .tap-target {
+    position: relative;
+  }
+  .tap-target::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    min-height: 44px;
+    height: 100%;
+  }
 }
 
 /* Film grain overlay — subtle, sits above a surface, never intercepts input */
@@ -163,6 +188,79 @@ div[id] {
   }
   100% {
     transform: translateY(26px);
+  }
+}
+
+/*
+ * Cinema titles: uppercase + wide tracking reads as a poster on a wide screen
+ * but shreds long Russian words on a phone. The tracking therefore scales with
+ * the viewport instead of being fixed, and the size uses clamp() so headings
+ * stay bold without overflowing. Applied via .title-cine / .title-cine-lg.
+ */
+.title-cine {
+  text-transform: uppercase;
+  font-weight: 200;
+  letter-spacing: clamp(0.07em, 0.045em + 0.6vw, 0.18em);
+  line-height: 1.32;
+  font-size: clamp(1.55rem, 1.1rem + 2.6vw, 3.6rem);
+}
+
+.title-cine-lg {
+  text-transform: uppercase;
+  font-weight: 200;
+  letter-spacing: clamp(0.08em, 0.05em + 0.7vw, 0.2em);
+  line-height: 1.24;
+  font-size: clamp(1.75rem, 1rem + 4.6vw, 5.4rem);
+}
+
+/* Film-gate flash left behind when the menu shutter slams closed */
+@keyframes gate-flash {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+  35% {
+    opacity: 0.85;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+/* Milestone ignition: a ring pulses out once as the marker passes a node */
+@keyframes node-ignite {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* The held hero frame is never perfectly still — a slow, shallow camera push */
+@keyframes hero-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+/* Touch feedback: a cyan ring blooms from the point of contact */
+@keyframes tap-bloom {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
   }
 }
 

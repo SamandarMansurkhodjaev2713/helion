@@ -95,6 +95,50 @@ export const FILM = {
   leaderStepMs: 650,
   /** Countdown start value for the opening film leader. */
   leaderFrom: 3,
+  /** Letterbox bar heights (px). "Wide" is the cinematic hold used on the hero
+   *  and the finale; "slim" gives content sections their height back. */
+  barWide: { top: 60, bottom: 52 },
+  barSlim: { top: 44, bottom: 36 },
+  /** Bar height while the mobile chrome is auto-hidden. */
+  barHidden: { top: 0, bottom: 3 },
+} as const
+
+/** Synthesised sound design. No audio files — everything is WebAudio. */
+export const SOUND = {
+  storageKey: 'helion-sound',
+  /** Master gain when enabled; deliberately quiet — this is atmosphere. */
+  masterGain: 0.5,
+  /** Two detuned low oscillators make the ship hum. */
+  humHz: [55, 82.5] as const,
+  humGain: 0.05,
+  /** Slow breathing of the hum (Hz of the LFO). */
+  humLfoHz: 0.06,
+  /** UI tick: frequency and decay of the short click. */
+  tickHz: 1750,
+  tickDecay: 0.06,
+  tickGain: 0.05,
+} as const
+
+/**
+ * Quality tiers. A short FPS probe on mount, combined with device hints,
+ * decides whether the page runs the full spectacle or a lighter cut.
+ */
+export const QUALITY = {
+  /** Frames sampled before deciding the tier. */
+  probeFrames: 32,
+  /** Below this average FPS the device is treated as low tier. */
+  lowFpsThreshold: 45,
+  /** deviceMemory (GB) / logical cores at or under which we assume low tier. */
+  lowMemoryGb: 4,
+  lowCores: 4,
+  /** Battery level under which effects drop to the light cut. */
+  lowBattery: 0.2,
+} as const
+
+/** Haptics: durations (ms) for the Vibration API, kept very short. */
+export const HAPTICS = {
+  light: 8,
+  medium: 14,
 } as const
 
 /**

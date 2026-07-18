@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { usePointerFine, useReducedMotion } from '../lib/hooks'
+import { useDeviceTier, usePointerFine, useReducedMotion } from '../lib/hooks'
 import { clamp01 } from '../lib/easing'
 import { STARFIELD } from '../lib/constants'
 import { readTokenRgb } from '../lib/colors'
@@ -154,6 +154,7 @@ export default function StarField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const reduced = useReducedMotion()
   const pointerFine = usePointerFine()
+  const tier = useDeviceTier()
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -218,7 +219,8 @@ export default function StarField() {
     }
 
     const buildField = () => {
-      const isMobile = window.matchMedia('(max-width: 768px)').matches
+      // Weak devices get the same sky, thinned out — never a different design.
+      const isMobile = window.matchMedia('(max-width: 768px)').matches || tier === 'low'
       const counts = isMobile ? STARFIELD.mobile : STARFIELD.desktop
       farStars = Array.from({ length: counts.far }, () => makeStar(0.15, 0.45, 0))
       midStars = Array.from({ length: counts.mid }, () =>
@@ -609,7 +611,7 @@ export default function StarField() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pointermove', onPointerMove)
     }
-  }, [reduced, pointerFine])
+  }, [reduced, pointerFine, tier])
 
   return (
     <canvas

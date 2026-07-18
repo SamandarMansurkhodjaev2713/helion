@@ -44,6 +44,17 @@ export const uz: Dictionary = {
     program: 'Parvoz dasturi',
     skip: 'Oʻtkazib yuborish uchun bosing',
   },
+  cursor: {
+    open: 'Ochish',
+    view: 'Koʻrish',
+    select: 'Tanlash',
+    contact: 'Aloqa',
+  },
+  sound: {
+    label: 'Ovoz',
+    on: 'yoq',
+    off: 'oʻch',
+  },
   hero: {
     titleLine1: 'Koinot',
     titleEmphasis: 'chegarasidan',
@@ -97,6 +108,10 @@ export const uz: Dictionary = {
     labelDistance: 'masofa',
     labelDuration: 'davomiyligi',
     labelCrew: 'ekipaj',
+    trajectoryLabel: 'Traektoriya',
+    originLabel: 'start',
+    targetLabel: 'nishon',
+    logLabel: 'Bort jurnali',
     items: [
       {
         code: 'HX-04',
@@ -107,6 +122,12 @@ export const uz: Dictionary = {
         status: 'active',
         summary:
           'Kamardan narigi nomsiz olam aylanib oʻtildi. Sirtining zond emas, inson koʻzi bilan olingan birinchi tasviri.',
+        origin: 'Yer · L2',
+        target: 'Olam 2027-A',
+        log: [
+          'T+311d · SIGNAL BARQAROR · EKIPAJ 12/12',
+          'VIZUAL ALOQA TASDIQLANDI · YOZUV KETMOQDA',
+        ],
       },
       {
         code: 'HX-02',
@@ -117,6 +138,12 @@ export const uz: Dictionary = {
         status: 'returned',
         summary:
           'Saturn orbitasidagi suzuvchi stansiya. Halqalar ichida toʻqqiz oy — va ularning birinchi akustika arxivi.',
+        origin: 'Yer · orbita',
+        target: 'Saturn · halqalar',
+        log: [
+          'T+2190d · QAYTISH YAKUNLANDI · EKIPAJ 8/8',
+          'HALQALAR AKUSTIKA ARXIVI UZATILDI · 412 SOAT',
+        ],
       },
       {
         code: 'HX-07',
@@ -127,6 +154,12 @@ export const uz: Dictionary = {
         status: 'planned',
         summary:
           'Koyper kamariga reys. Quyosh shunchaki eng yorugʻ yulduzga aylanadigan nuqta.',
+        origin: 'Yer · L2',
+        target: 'Koyper kamari',
+        log: [
+          'T-000d · UCHIRISH OYNASI HISOBLANDI · 2031',
+          'KORPUS YIGʻILMOQDA · EKIPAJ TANLANMAGAN',
+        ],
       },
     ],
   },
@@ -229,30 +262,48 @@ export const uz: Dictionary = {
     title: 'Koʻzini',
     titleEmphasis: 'uzmaganlar',
     intro: 'Har bir asbob ortida — yana bir aylanaga qolishga qaror qilgan inson.',
+    labelHours: 'parvoz',
+    labelMissions: 'missiya',
+    labelCallsign: 'chaqiruv',
+    quote:
+      'Biz nimadir isbotlash uchun uchmaymiz. Kimdir birinchi boʻlib qarashi kerak — shuning uchun uchamiz.',
+    quoteAuthor: 'Iris Kan · HX-04 komandiri',
     members: [
       {
         name: 'Iris Kan',
         role: 'Ekspeditsiya komandiri',
         tag: 'HX-04',
         bio: 'Oʻn besh yil orbital dasturlar. Nomsiz olamni birinchi boʻlib koʻrdi — va birinchi boʻlib yuz oʻgirmaslikka qaror qildi.',
+        callsign: 'IRIS',
+        hours: '14 200',
+        missions: '09',
       },
       {
         name: 'Dmitriy Val',
         role: 'Navigator',
         tag: 'Kurs',
         bio: 'Xato qilib boʻlmaydigan traektoriyalarni hisoblaydi. Xarita yoʻq joyda xaritani xayolida saqlaydi.',
+        callsign: 'VECTOR',
+        hours: '11 480',
+        missions: '07',
       },
       {
         name: 'Leya Ortis',
         role: 'Bort muhandisi',
         tag: 'Tizimlar',
         bio: 'Aurorani soʻnggi klapangacha biladi. Ustaxonadan toʻqson million kilometr uzoqda sinmasni taʼmirlaydi.',
+        callsign: 'WRENCH',
+        hours: '9 640',
+        missions: '06',
       },
       {
         name: 'Teo Raskin',
         role: 'Ekspeditsiya shifokori',
         tag: 'Ekipaj',
         bio: 'Oʻn ikki kishi uyiga qaytishi uchun javob beradi. Avvalgidek — yoki hech boʻlmaganda tirik.',
+        callsign: 'MEDIC',
+        hours: '6 310',
+        missions: '04',
       },
     ],
   },
@@ -267,6 +318,16 @@ export const uz: Dictionary = {
     seatsValue: '07',
     seatsLabel: 'joy boʻsh',
     manifest: 'HELION PROGRAM · MANIFESTDA JOY 07 / 12',
+    passTitle: 'Chiptangiz',
+    passSeat: 'joy',
+    passSeatValue: '08 / 12',
+    passFlight: 'reys',
+    passFlightValue: 'HX-04',
+    passDeparture: 'joʻnash',
+    passDepartureValue: '2027',
+    passGate: 'shlyuz',
+    passGateValue: 'L2',
+    passNote: 'Chipta manifest yopilgunga qadar amal qiladi',
   },
   footer: {
     tagline: 'Helion — olamlar orasidagi sukunat.',

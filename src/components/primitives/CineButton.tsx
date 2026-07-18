@@ -1,5 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import MagneticButton from './MagneticButton'
+import { useHaptics } from '../../lib/hooks'
+import { useSound } from '../../lib/SoundProvider'
 
 interface CineButtonProps {
   children: ReactNode
@@ -46,20 +48,29 @@ export default function CineButton({
   className = '',
 }: CineButtonProps) {
   const solid = variant === 'solid'
+  const haptic = useHaptics()
+  const { play } = useSound()
+
+  // Touch has no hover to lean on, so the commit itself must be felt: a short
+  // press-in, a haptic tap and a cue.
+  const handleClick = (event: MouseEvent<HTMLElement>) => {
+    haptic('medium')
+    play('select')
+    onClick?.(event)
+  }
+
   return (
     <MagneticButton
       href={href}
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}
-      onClick={onClick}
+      onClick={handleClick}
       cursorLabel={cursorLabel}
       className={className}
     >
       <span
-        className={`group/btn relative inline-flex items-center gap-3 px-7 py-3.5 font-mono text-xs uppercase tracking-[0.2em] transition-colors duration-300 ${
-          solid
-            ? 'bg-accent text-void hover:bg-accent-bright'
-            : 'text-bone hover:text-accent'
+        className={`group/btn relative inline-flex items-center gap-3 px-7 py-3.5 font-mono text-xs uppercase tracking-[0.2em] transition-all duration-300 active:scale-[0.97] ${
+          solid ? 'bg-accent text-void hover:bg-accent-bright' : 'text-bone hover:text-accent'
         }`}
       >
         {!solid && (

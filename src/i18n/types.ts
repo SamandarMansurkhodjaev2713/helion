@@ -17,6 +17,11 @@ export interface MissionItem {
   crew: string
   status: MissionStatus
   summary: string
+  /** Origin and destination captions on the mini trajectory. */
+  origin: string
+  target: string
+  /** Two ship's-log lines that type out when the dossier opens. */
+  log: [string, string]
 }
 
 export interface ShipSpec {
@@ -46,6 +51,11 @@ export interface CrewMember {
   role: string
   tag: string
   bio: string
+  /** Radio callsign shown on hover. */
+  callsign: string
+  /** Flight record: logged hours and completed missions. */
+  hours: string
+  missions: string
 }
 
 export interface Dictionary {
@@ -96,6 +106,19 @@ export interface Dictionary {
     program: string
     skip: string
   }
+  /** Action verbs the HUD cursor shows when it locks onto a target. */
+  cursor: {
+    open: string
+    view: string
+    select: string
+    contact: string
+  }
+  /** Sound toggle in the top bar. */
+  sound: {
+    label: string
+    on: string
+    off: string
+  }
   hero: {
     titleLine1: string
     titleEmphasis: string
@@ -143,6 +166,13 @@ export interface Dictionary {
     labelDistance: string
     labelDuration: string
     labelCrew: string
+    /** Heading of the trajectory diagram inside an open dossier. */
+    trajectoryLabel: string
+    /** Origin / destination captions on the trajectory. */
+    originLabel: string
+    targetLabel: string
+    /** Heading of the ship's-log strip. */
+    logLabel: string
     items: MissionItem[]
   }
   fleet: {
@@ -169,6 +199,13 @@ export interface Dictionary {
     title: string
     titleEmphasis: string
     intro: string
+    /** Column captions of the flight-record strip. */
+    labelHours: string
+    labelMissions: string
+    labelCallsign: string
+    /** Closing commander's line under the crew list. */
+    quote: string
+    quoteAuthor: string
     members: CrewMember[]
   }
   contact: {
@@ -182,6 +219,17 @@ export interface Dictionary {
     seatsValue: string
     seatsLabel: string
     manifest: string
+    /** Boarding-pass field captions and values. */
+    passTitle: string
+    passSeat: string
+    passSeatValue: string
+    passFlight: string
+    passFlightValue: string
+    passDeparture: string
+    passDepartureValue: string
+    passGate: string
+    passGateValue: string
+    passNote: string
   }
   footer: {
     tagline: string

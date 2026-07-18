@@ -19,6 +19,13 @@ export default {
           bright: '#A9E7FF', // hover / glow highlight
           deep: '#3E9FC4', // pressed / shadow
         },
+        // Warm counterpoint (Mars dust). Strictly rationed: live status, REC,
+        // meteors, the finale. Never competes with accent for CTAs.
+        mars: {
+          DEFAULT: '#E09A6A',
+          bright: '#FFD8B2',
+          deep: '#B56B3E',
+        },
         steel: '#6E8BA6', // muted secondary accent — telemetry, contrast
         ice: '#9DBBD6', // soft cold highlight
         bone: '#ECE6DA', // primary text

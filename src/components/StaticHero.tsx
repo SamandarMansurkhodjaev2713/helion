@@ -22,7 +22,7 @@ export default function StaticHero() {
 
       <div className="relative z-content mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center gap-14 px-6 py-32 text-center">
         <div>
-          <h1 className="text-[26px] font-extralight uppercase leading-[1.5] tracking-[0.2em] text-bone sm:text-4xl">
+          <h1 className="title-cine-lg text-bone">
             {t.hero.titleLine1}
             <span className="block text-accent">{t.hero.titleEmphasis}</span>
             {t.hero.titleLine3}
@@ -36,7 +36,7 @@ export default function StaticHero() {
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-steel">
             {t.hero.missionTag}
           </p>
-          <h2 className="mt-4 text-xl font-extralight uppercase leading-[1.5] tracking-cine text-bone sm:text-2xl">
+          <h2 className="title-cine mt-4 text-bone">
             {t.hero.bLine1} {t.hero.bEmphasisA}{' '}
             <span className="text-accent">{t.hero.bEmphasisB}</span>
           </h2>
@@ -46,9 +46,8 @@ export default function StaticHero() {
         </div>
 
         <div>
-          <h2 className="text-xl font-extralight uppercase leading-[1.5] tracking-cine text-bone sm:text-2xl">
-            {t.hero.finaleLine1}{' '}
-            <span className="text-accent">{t.hero.finaleEmphasis}</span>
+          <h2 className="title-cine text-bone">
+            {t.hero.finaleLine1} <span className="text-accent">{t.hero.finaleEmphasis}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-sm text-bone/65">{t.hero.finaleRightBody}</p>
           <div className="mt-9 flex justify-center">

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { clamp01 } from './easing'
+import { HAPTICS, QUALITY } from './constants'
 
 /**
  * Subscribe to a media query and re-render when it flips. SSR-safe default of
@@ -30,6 +31,130 @@ export function useReducedMotion(): boolean {
 /** True on precise pointers (mouse/trackpad) — where the custom cursor is worth it. */
 export function usePointerFine(): boolean {
   return useMediaQuery('(hover: hover) and (pointer: fine)')
+}
+
+/** Device capability tier. 'high' gets the full spectacle, 'low' a lighter cut. */
+export type DeviceTier = 'high' | 'low'
+
+interface NavigatorHints extends Navigator {
+  deviceMemory?: number
+  getBattery?: () => Promise<{ level: number; addEventListener: EventTarget['addEventListener'] }>
+}
+
+/**
+ * Decide how much visual work this device should be asked to do. A short
+ * frame-rate probe on mount is combined with hardware hints (memory, cores)
+ * and, where exposed, battery level. Everything degrades to 'high' when the
+ * hints are unavailable, so capable browsers are never punished for privacy.
+ *
+ * The probe runs once and its rAF is cancelled on unmount.
+ */
+export function useDeviceTier(): DeviceTier {
+  const [tier, setTier] = useState<DeviceTier>('high')
+
+  useEffect(() => {
+    const nav = navigator as NavigatorHints
+    // Hardware hints are decisive on their own — no need to burn frames.
+    if (
+      (nav.deviceMemory !== undefined && nav.deviceMemory <= QUALITY.lowMemoryGb) ||
+      (nav.hardwareConcurrency !== undefined && nav.hardwareConcurrency <= QUALITY.lowCores)
+    ) {
+      setTier('low')
+      return
+    }
+
+    let frames = 0
+    let start = 0
+    let raf = 0
+    const sample = (now: number) => {
+      if (!start) start = now
+      frames += 1
+      if (frames < QUALITY.probeFrames) {
+        raf = requestAnimationFrame(sample)
+        return
+      }
+      const fps = (frames * 1000) / (now - start)
+      if (fps < QUALITY.lowFpsThreshold) setTier('low')
+    }
+    raf = requestAnimationFrame(sample)
+
+    // Battery, when the browser exposes it, can demote a strong device.
+    let cancelled = false
+    nav
+      .getBattery?.()
+      .then((battery) => {
+        if (!cancelled && battery.level <= QUALITY.lowBattery) setTier('low')
+      })
+      .catch(() => {
+        // Not exposed — keep the frame-rate verdict.
+      })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  return tier
+}
+
+/** Short, optional haptic feedback for touch interactions. */
+export function useHaptics(): (strength?: keyof typeof HAPTICS) => void {
+  return useCallback((strength: keyof typeof HAPTICS = 'light') => {
+    // Vibration is unsupported on iOS Safari and may be blocked elsewhere;
+    // it is pure enhancement, so failure is silently fine.
+    try {
+      navigator.vibrate?.(HAPTICS[strength])
+    } catch {
+      // Ignore — the visual feedback still fired.
+    }
+  }, [])
+}
+
+/**
+ * Whether the chrome should currently be visible: hidden while the user scrolls
+ * down through content, shown again on any upward scroll, near the top, or once
+ * scrolling stops. Used by the mobile letterbox bars so they stop eating 11% of
+ * a phone screen without ever losing the cinema frame for long.
+ */
+export function useChromeVisible(enabled: boolean, hideAfter = 90): boolean {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (!enabled) {
+      setVisible(true)
+      return
+    }
+    let lastY = window.scrollY
+    let frame = 0
+    let idleTimer = 0
+
+    const measure = () => {
+      frame = 0
+      const y = window.scrollY
+      const delta = y - lastY
+      lastY = y
+      if (y < hideAfter) setVisible(true)
+      else if (delta > 4) setVisible(false)
+      else if (delta < -4) setVisible(true)
+
+      // Standing still always returns the frame.
+      window.clearTimeout(idleTimer)
+      idleTimer = window.setTimeout(() => setVisible(true), 900)
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+
+    window.addEventListener('scroll', schedule, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      if (frame) cancelAnimationFrame(frame)
+      window.clearTimeout(idleTimer)
+    }
+  }, [enabled, hideAfter])
+
+  return visible
 }
 
 interface InViewOptions {

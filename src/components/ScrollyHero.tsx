@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '../i18n'
-import { SECTION_ID, MOTION, asset } from '../lib/constants'
+import { MOTION, SCENE_NO, SECTION_ID, asset } from '../lib/constants'
 import { clamp01, easeOutCubic } from '../lib/easing'
-import { useMediaQuery } from '../lib/hooks'
+import { useMediaQuery, useReducedMotion } from '../lib/hooks'
 import CineButton from './primitives/CineButton'
+import HeroAtmosphere from './hero/HeroAtmosphere'
 
 /** Timestamp (s) where clip 1 (push-in to helmet) ends inside scrub.mp4. */
 export const CLIP1_END = 8.0417
@@ -15,6 +16,8 @@ const FALLBACK_DURATION = 18.0833
 const FRAME_SCALE_FROM = 0.85
 /** Scroll progress at which the mobile push-in reaches full frame. */
 const FRAME_ZOOM_END = 0.3
+/** Progress at which the closing cut to the next scene begins. */
+const CUT_START = 0.96
 
 /** Map pinned-section progress (0–1) to video time per the story script. */
 function progressToTime(p: number, duration: number): number {
@@ -39,36 +42,31 @@ function rev(hp: number, start: number, span = 0.18, dy = 24, blur = 8): CSSProp
 /** Block B focus-pull variant: deeper offset, heavy blur-to-sharp. */
 const revB = (hp: number, start: number, span = 0.18) => rev(hp, start, span, 28, 14)
 
-/** Per-word scroll-mapped cascade for headings. */
-function Words({
-  text,
+/** A heading line that rises out from under a mask as the block pours in. */
+function MaskLine({
+  children,
   hp,
   start,
-  step = 0.08,
-  span = 0.18,
-  dy = 24,
-  blur = 8,
+  className = '',
 }: {
-  text: string
+  children: React.ReactNode
   hp: number
   start: number
-  step?: number
-  span?: number
-  dy?: number
-  blur?: number
+  className?: string
 }) {
-  const words = text.split(' ')
+  const e = easeOutCubic(clamp01((hp - start) / 0.2))
   return (
-    <>
-      {words.map((word, i) => (
-        <span key={i}>
-          <span className="inline-block" style={rev(hp, start + i * step, span, dy, blur)}>
-            {word}
-          </span>
-          {i < words.length - 1 ? ' ' : null}
-        </span>
-      ))}
-    </>
+    <span className="block overflow-hidden [clip-path:inset(-25%_-25%_0_-25%)]">
+      <span
+        className={`block will-change-transform ${className}`}
+        style={{
+          transform: `translateY(${((1 - e) * 105).toFixed(2)}%)`,
+          opacity: e,
+        }}
+      >
+        {children}
+      </span>
+    </span>
   )
 }
 
@@ -90,9 +88,41 @@ function FrameTick({ position }: { position: string }) {
   return <span aria-hidden className={`absolute ${position} h-3 w-3 ${edges} border-accent/60`} />
 }
 
+/** Optical-sight scale down the right edge; the runner tracks hero progress. */
+function SightScale({ progress }: { progress: number }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute right-4 top-1/2 hidden h-[38vh] -translate-y-1/2 md:block"
+    >
+      <div className="relative h-full w-8">
+        <span className="absolute right-0 top-0 h-full w-px bg-white/10" />
+        {Array.from({ length: 11 }, (_, index) => (
+          <span
+            key={index}
+            className={`absolute right-0 h-px ${index % 5 === 0 ? 'w-3 bg-white/25' : 'w-1.5 bg-white/12'}`}
+            style={{ top: `${index * 10}%` }}
+          />
+        ))}
+        {/* Runner */}
+        <span
+          className="absolute right-0 flex items-center gap-1.5 transition-[top] duration-200 ease-out"
+          style={{ top: `${progress * 100}%` }}
+        >
+          <span className="font-mono text-[9px] tabular-nums text-accent/80">
+            {Math.round(progress * 100)}
+          </span>
+          <span className="h-px w-4 bg-accent" />
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function ScrollyHero() {
   const { t } = useI18n()
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const reduced = useReducedMotion()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const introRef = useRef<HTMLVideoElement>(null)
@@ -126,6 +156,10 @@ export default function ScrollyHero() {
     const onReady = () => setLoaded(true)
     if (video.readyState >= 4) onReady()
     video.addEventListener('canplaythrough', onReady, { once: true })
+    // Never leave a visitor staring at a loader: if the scrub has not buffered
+    // in time (slow network, throttled mobile), reveal the poster frame and let
+    // the story play out over it.
+    const failsafe = window.setTimeout(() => setLoaded(true), 3000)
 
     let raf = 0
     let running = false
@@ -180,6 +214,7 @@ export default function ScrollyHero() {
     return () => {
       stop()
       observer?.disconnect()
+      window.clearTimeout(failsafe)
       video.removeEventListener('canplaythrough', onReady)
     }
   }, [])
@@ -200,13 +235,20 @@ export default function ScrollyHero() {
   const frameScale = isMobile ? FRAME_SCALE_FROM + (1 - FRAME_SCALE_FROM) * frameZoom : 1
   const frameFade = isMobile ? 1 - frameZoom : 0
 
+  // The closing cut: the frame darkens away as scene 02 is struck through it.
+  const cut = clamp01((p - CUT_START) / (1 - CUT_START))
+
   return (
     <div ref={wrapperRef} id={SECTION_ID.hero} className="relative h-[600vh]">
       <div className="sticky top-0 h-[100dvh] overflow-hidden bg-void grain vignette">
-        {/* Footage layer — scaled back into a ticked cinema frame on mobile */}
+        {/* Footage layer — breathes at rest, scaled back into a frame on mobile */}
         <div
           className="absolute inset-0 will-change-transform"
-          style={frameScale < 1 ? { transform: `scale(${frameScale.toFixed(4)})` } : undefined}
+          style={{
+            transform: `scale(${frameScale.toFixed(4)})`,
+            // The idle frame never sits perfectly still: a slow, shallow push.
+            animation: reduced || p > 0.02 ? undefined : 'hero-breathe 11s ease-in-out infinite',
+          }}
         >
           <video
             ref={videoRef}
@@ -249,6 +291,9 @@ export default function ScrollyHero() {
           )}
         </div>
 
+        {/* Dust in the key light — only while the frame is held at rest */}
+        <HeroAtmosphere className="absolute inset-0 z-20 h-full w-full transition-opacity duration-700" />
+
         {/* Cold glow behind the finale figure (mirrors --accent) */}
         <div
           className="pointer-events-none absolute inset-0 z-30 bg-[radial-gradient(ellipse_55%_45%_at_50%_100%,rgba(111,211,242,0.12),transparent_70%)]"
@@ -281,6 +326,20 @@ export default function ScrollyHero() {
           </div>
         </div>
 
+        {/* Production slate — the frame is a take on a reel */}
+        <div
+          className={`pointer-events-none absolute left-5 top-[13%] z-content font-mono text-[9px] uppercase leading-relaxed tracking-[0.22em] text-bone/40 transition-opacity duration-700 md:left-[7%] md:top-[15%] ${
+            blockA ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <span className="block border-l border-accent/40 pl-2.5">
+            SCENE {SCENE_NO[SECTION_ID.hero]} · TAKE 01
+          </span>
+          <span className="mt-1 block pl-2.5 text-bone/25">HELION · 35MM · 24FPS</span>
+        </div>
+
+        <SightScale progress={p} />
+
         {/* ——— Block A: split hero — figure centred, film titles at the sides ——— */}
         <div
           style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
@@ -289,19 +348,25 @@ export default function ScrollyHero() {
           }`}
         >
           {/* Left: main title */}
-          <div className="absolute text-left max-md:inset-x-0 max-md:top-[15%] max-md:px-7 md:left-[7%] md:top-[24%] md:max-w-[560px]">
-            <h1 className="text-2xl font-extralight uppercase leading-[1.5] tracking-[0.2em] text-bone md:text-[40px] md:leading-[1.4]">
-              {t.hero.titleLine1}
-              <span className="block text-accent">{t.hero.titleEmphasis}</span>
-              {t.hero.titleLine3}
+          <div className="absolute text-left max-md:inset-x-0 max-md:top-[19%] max-md:px-6 md:left-[7%] md:top-[25%] md:max-w-[620px]">
+            <h1 className="title-cine-lg text-bone">
+              <MaskLine hp={1} start={0}>
+                {t.hero.titleLine1}
+              </MaskLine>
+              <MaskLine hp={1} start={0} className="text-accent">
+                {t.hero.titleEmphasis}
+              </MaskLine>
+              <MaskLine hp={1} start={0}>
+                {t.hero.titleLine3}
+              </MaskLine>
             </h1>
-            <p className="mt-5 max-w-[300px] text-sm leading-relaxed text-bone/60 max-md:text-bone/80 max-md:[text-shadow:0_1px_14px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]">
+            <p className="mt-6 max-w-[320px] text-sm leading-relaxed text-bone/60 max-md:text-bone/80 max-md:[text-shadow:0_1px_14px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]">
               {t.hero.lead}
             </p>
           </div>
 
           {/* Right: tagline */}
-          <div className="absolute right-[7%] top-[24%] hidden max-w-[280px] text-left md:block">
+          <div className="absolute right-[7%] top-[25%] hidden max-w-[280px] text-left lg:block">
             <h3 className="text-lg font-extralight uppercase leading-[1.5] tracking-[0.18em] text-bone">
               {t.hero.asideTitle} <span className="text-ice">{t.hero.asideEmphasis}</span>
             </h3>
@@ -311,11 +376,11 @@ export default function ScrollyHero() {
           </div>
 
           {/* Bottom-right: voyage slate */}
-          <div className="absolute bottom-[13%] right-[7%] text-right max-md:bottom-[16%]">
+          <div className="absolute bottom-[14%] right-[7%] text-right max-md:bottom-[17%] max-md:right-6">
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-steel">
               {t.hero.voyageLabel}
             </p>
-            <p className="mt-2 font-extralight leading-none tracking-[0.14em] text-accent text-4xl tabular-nums md:text-5xl">
+            <p className="mt-2 font-extralight leading-none tracking-[0.14em] text-accent text-5xl tabular-nums md:text-6xl">
               {t.hero.voyageYear}
             </p>
           </div>
@@ -337,7 +402,7 @@ export default function ScrollyHero() {
 
         {/* ——— Block B: helmet close-up hold — mission briefing on the right ——— */}
         <div
-          className="pointer-events-none absolute z-content max-md:inset-x-0 max-md:bottom-[10%] max-md:px-7 md:right-[8%] md:top-1/2 md:max-w-[460px] md:-translate-y-1/2"
+          className="pointer-events-none absolute z-content max-md:inset-x-0 max-md:bottom-[11%] max-md:px-6 md:right-[8%] md:top-1/2 md:max-w-[480px] md:-translate-y-1/2"
           style={{ opacity: fadeB, visibility: hpB > 0 && fadeB > 0 ? 'visible' : 'hidden' }}
         >
           <div style={{ transform: `translateY(${(-20 * (1 - fadeB)).toFixed(2)}px)` }}>
@@ -345,17 +410,13 @@ export default function ScrollyHero() {
               {t.hero.missionTag}
             </p>
 
-            <h2 className="mt-5 text-[26px] font-extralight uppercase leading-[1.4] tracking-[0.16em] text-bone md:text-4xl">
-              <Words text={t.hero.bLine1} hp={hpB} start={0.1} dy={28} blur={14} />
-              <br />
-              <span>
-                <span className="inline-block" style={revB(hpB, 0.26)}>
-                  {t.hero.bEmphasisA}
-                </span>{' '}
-                <span className="inline-block text-accent" style={revB(hpB, 0.34)}>
-                  {t.hero.bEmphasisB}
-                </span>
-              </span>
+            <h2 className="title-cine mt-5 text-bone">
+              <MaskLine hp={hpB} start={0.1}>
+                {t.hero.bLine1}
+              </MaskLine>
+              <MaskLine hp={hpB} start={0.26}>
+                {t.hero.bEmphasisA} <span className="text-accent">{t.hero.bEmphasisB}</span>
+              </MaskLine>
             </h2>
 
             <p className="mt-6 text-[15px] leading-relaxed text-bone/85" style={revB(hpB, 0.44)}>
@@ -386,14 +447,16 @@ export default function ScrollyHero() {
           className="pointer-events-none absolute inset-0 z-content"
           style={{ visibility: hpC > 0 ? 'visible' : 'hidden' }}
         >
-          <h2 className="absolute inset-x-0 top-[12%] px-7 text-center text-[22px] font-extralight uppercase leading-[1.5] tracking-[0.16em] text-bone md:top-[11%] md:text-4xl md:leading-[1.45]">
-            <Words text={t.hero.finaleLine1} hp={hpC} start={0} step={0.06} />
-            <span className="mt-1 block text-accent">
-              <Words text={t.hero.finaleEmphasis} hp={hpC} start={0.18} step={0.04} />
-            </span>
+          <h2 className="title-cine absolute inset-x-0 top-[13%] px-6 text-center text-bone md:top-[12%]">
+            <MaskLine hp={hpC} start={0}>
+              {t.hero.finaleLine1}
+            </MaskLine>
+            <MaskLine hp={hpC} start={0.16} className="text-accent">
+              {t.hero.finaleEmphasis}
+            </MaskLine>
           </h2>
 
-          <div className="max-md:absolute max-md:inset-x-0 max-md:bottom-[9%] max-md:flex max-md:flex-col max-md:gap-7 max-md:px-7 md:contents">
+          <div className="max-md:absolute max-md:inset-x-0 max-md:bottom-[10%] max-md:flex max-md:flex-col max-md:gap-7 max-md:px-6 md:contents">
             {/* Left column */}
             <div className="md:absolute md:bottom-[16%] md:left-[7%] md:max-w-[300px]">
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-steel" style={rev(hpC, 0.3)}>
@@ -428,7 +491,7 @@ export default function ScrollyHero() {
                 <a
                   href={`#${SECTION_ID.route}`}
                   data-cursor="link"
-                  className="pointer-events-auto mt-5 inline-block font-mono text-[11px] uppercase tracking-[0.18em] text-bone/50 transition-colors hover:text-accent"
+                  className="tap-target pointer-events-auto mt-5 inline-block font-mono text-[11px] uppercase tracking-[0.18em] text-bone/50 transition-colors hover:text-accent"
                 >
                   {t.hero.routeLink}
                 </a>
@@ -436,6 +499,37 @@ export default function ScrollyHero() {
             </div>
           </div>
         </div>
+
+        {/* ——— The cut into scene 02: the frame goes down and the next scene
+                number is struck through it in chalk ——— */}
+        {cut > 0 && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-[70]">
+            <div className="absolute inset-0 bg-void" style={{ opacity: cut * 0.92 }} />
+            <svg
+              viewBox="0 0 200 130"
+              className="absolute left-1/2 top-1/2 w-[70vw] -translate-x-1/2 -translate-y-1/2 md:w-[26vw]"
+            >
+              <text
+                x="100"
+                y="104"
+                textAnchor="middle"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.7"
+                pathLength={1}
+                className="text-accent/70"
+                style={{
+                  font: '300 130px "JetBrains Mono", monospace',
+                  strokeDasharray: 1,
+                  strokeDashoffset: 1 - cut,
+                  opacity: Math.min(1, cut * 2),
+                }}
+              >
+                {SCENE_NO[SECTION_ID.missions]}
+              </text>
+            </svg>
+          </div>
+        )}
       </div>
     </div>
   )
