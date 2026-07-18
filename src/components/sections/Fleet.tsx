@@ -28,11 +28,22 @@ const STILLS: Record<string, string> = {
   xerxes: 'still_xerxes.jpg',
 }
 
-/** Catalogue captions stamped on each archive frame. */
-const FRAME_META: Record<string, { orbit: string; date: string; exposure: string }> = {
-  aurora: { orbit: 'ORB 402 KM', date: '2027.03.14', exposure: 'f/8 · 1/250' },
-  vesta: { orbit: 'ORB 388 KM', date: '2026.11.02', exposure: 'f/5.6 · 1/400' },
-  xerxes: { orbit: 'ORB 411 KM', date: '2027.01.28', exposure: 'f/11 · 1/125' },
+/**
+ * Catalogue captions stamped on each archive frame, plus the plate format.
+ *
+ * The three NASA frames are wildly different shapes (4:3, 2:3 portrait, 16:9)
+ * and each is a small craft against a vast black sky. Cropping them to a common
+ * window throws the subject out of frame, so the plate is shown whole
+ * (`object-contain`): because every photo's background is the same black space
+ * as the frame, the letterboxing is invisible and nothing is lost.
+ */
+const FRAME_META: Record<
+  string,
+  { orbit: string; date: string; exposure: string; format: string }
+> = {
+  aurora: { orbit: 'ORB 402 KM', date: '2027.03.14', exposure: 'f/8 · 1/250', format: '4:3' },
+  vesta: { orbit: 'ORB 388 KM', date: '2026.11.02', exposure: 'f/5.6 · 1/400', format: '2:3' },
+  xerxes: { orbit: 'ORB 411 KM', date: '2027.01.28', exposure: 'f/11 · 1/125', format: '16:9' },
 }
 
 /** Count a numeric string up from zero once `play` is true, re-running when the
@@ -159,7 +170,7 @@ function ShipStill({ ship, label, switching }: { ship: ShipItem; label: string; 
   return (
     <div
       ref={ref}
-      className="relative h-[52vh] overflow-hidden border border-white/10 bg-void grain md:h-[68vh]"
+      className="relative aspect-[4/3] overflow-hidden border border-white/10 bg-void grain"
     >
       <FrameTick position="-left-px -top-px" />
       <FrameTick position="-right-px -top-px" />
@@ -168,10 +179,10 @@ function ShipStill({ ship, label, switching }: { ship: ShipItem; label: string; 
 
       <MediaDevelop developKey={ship.id} className="absolute inset-0">
         <figure
-          className="m-0 h-full w-full"
+          className="relative m-0 h-full w-full"
           style={{
-            // Projector snap: the outgoing frame slides up out of the gate.
-            transform: `translateY(${switching ? -3 : shift}%) scale(1.08)`,
+            // Projector snap: the outgoing plate slides up out of the gate.
+            transform: `translateY(${switching ? -3 : shift * 0.35}%) scale(1.02)`,
             opacity: switching ? 0.25 : 1,
             transition: 'transform 420ms var(--ease-cinematic), opacity 320ms ease-out',
           }}
@@ -180,20 +191,25 @@ function ShipStill({ ship, label, switching }: { ship: ShipItem; label: string; 
             src={asset(STILLS[ship.id] ?? STILLS.aurora)}
             alt={`${ship.name} — ${ship.role}`}
             loading="lazy"
-            className="h-full w-full object-cover grayscale contrast-[1.08] brightness-[0.82]"
+            className="h-full w-full object-contain grayscale contrast-[1.06] brightness-[0.86]"
           />
           {/* Cold duotone: colorize pass (mirrors --deep) + a cyan lift (mirrors --accent) */}
           <div aria-hidden className="absolute inset-0 mix-blend-color" style={{ background: 'rgb(30, 52, 76)' }} />
           <div
             aria-hidden
             className="absolute inset-0 mix-blend-soft-light"
-            style={{ background: 'linear-gradient(135deg, rgba(111,211,242,0.38), transparent 62%)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(111,211,242,0.34), transparent 62%)' }}
           />
         </figure>
       </MediaDevelop>
 
-      {/* Frame shading + catalogue captions */}
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-void/80 via-transparent to-void/30" />
+      {/* Frame shading, kept off the middle so the plate stays readable */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-void/70 via-transparent to-void/25"
+      />
+
+      {/* Catalogue slate */}
       <div className="absolute inset-x-0 top-0 flex justify-between px-4 pt-3.5 font-mono text-[9px] uppercase tracking-[0.18em] text-bone/45">
         <span>{meta.orbit}</span>
         <span>{meta.date}</span>
@@ -202,7 +218,10 @@ function ShipStill({ ship, label, switching }: { ship: ShipItem; label: string; 
         <span>
           {ship.id.toUpperCase()} · {label}
         </span>
-        <span className="text-accent/70">{meta.exposure}</span>
+        <span className="flex items-center gap-3">
+          <span className="text-bone/35">{meta.format}</span>
+          <span className="text-accent/70">{meta.exposure}</span>
+        </span>
       </div>
     </div>
   )

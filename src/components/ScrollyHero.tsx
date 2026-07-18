@@ -501,33 +501,20 @@ export default function ScrollyHero() {
         </div>
 
         {/* ——— The cut into scene 02: the frame goes down and the next scene
-                number is struck through it in chalk ——— */}
+                number wipes up through it ——— */}
         {cut > 0 && (
           <div aria-hidden className="pointer-events-none absolute inset-0 z-[70]">
             <div className="absolute inset-0 bg-void" style={{ opacity: cut * 0.92 }} />
-            <svg
-              viewBox="0 0 200 130"
-              className="absolute left-1/2 top-1/2 w-[70vw] -translate-x-1/2 -translate-y-1/2 md:w-[26vw]"
+            <span
+              className="absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2 font-mono text-[34vw] font-extralight leading-none tracking-tight text-accent/50 md:text-[15vw]"
+              style={{
+                // A wipe, not a stroke-dash: `pathLength` is unreliable on text
+                // and shreds the glyphs into dots where it is ignored.
+                clipPath: `inset(${((1 - cut) * 100).toFixed(1)}% 0 -10% 0)`,
+              }}
             >
-              <text
-                x="100"
-                y="104"
-                textAnchor="middle"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="0.7"
-                pathLength={1}
-                className="text-accent/70"
-                style={{
-                  font: '300 130px "JetBrains Mono", monospace',
-                  strokeDasharray: 1,
-                  strokeDashoffset: 1 - cut,
-                  opacity: Math.min(1, cut * 2),
-                }}
-              >
-                {SCENE_NO[SECTION_ID.missions]}
-              </text>
-            </svg>
+              {SCENE_NO[SECTION_ID.missions]}
+            </span>
           </div>
         )}
       </div>

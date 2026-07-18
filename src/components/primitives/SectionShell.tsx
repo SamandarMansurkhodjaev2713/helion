@@ -27,12 +27,19 @@ const GLOW: Record<Atmosphere, string> = {
   none: 'transparent',
 }
 
-/** Soft directional key light — each section is lit like its own set. */
+/**
+ * Soft directional key light — each section is lit like its own set.
+ *
+ * These are radial pools rather than linear ramps on purpose: a linear gradient
+ * stops dead at the layer's edge, and against a dark page that straight cut
+ * reads as a seam. A pool centred off-frame falls off on every side, so the
+ * light has no edges at all.
+ */
 const KEY_LIGHT: Record<Light, string> = {
-  left: 'linear-gradient(100deg, rgba(157, 187, 214, 0.075), transparent 46%)',
-  top: 'linear-gradient(184deg, rgba(157, 187, 214, 0.085), transparent 44%)',
-  right: 'linear-gradient(260deg, rgba(157, 187, 214, 0.075), transparent 46%)',
-  bottom: 'linear-gradient(0deg, rgba(224, 154, 106, 0.09), transparent 46%)',
+  left: 'radial-gradient(75% 85% at 0% 35%, rgba(157, 187, 214, 0.085), transparent 68%)',
+  top: 'radial-gradient(95% 70% at 50% 0%, rgba(157, 187, 214, 0.095), transparent 66%)',
+  right: 'radial-gradient(75% 85% at 100% 35%, rgba(157, 187, 214, 0.085), transparent 68%)',
+  bottom: 'radial-gradient(95% 75% at 50% 100%, rgba(224, 154, 106, 0.10), transparent 68%)',
   none: 'transparent',
 }
 
@@ -76,7 +83,12 @@ export default function SectionShell({
   return (
     <section ref={ref} id={id} className={`relative ${className}`} style={cutStyle}>
       {(atmosphere !== 'none' || light !== 'none') && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-[1] overflow-hidden">
+        // Full-bleed: the section itself is width-capped, but its light must not
+        // be — a lit rectangle sitting inside the column reads as a seam.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-screen -translate-x-1/2 overflow-hidden"
+        >
           {light !== 'none' && (
             <div className="absolute inset-0" style={{ background: KEY_LIGHT[light] }} />
           )}
