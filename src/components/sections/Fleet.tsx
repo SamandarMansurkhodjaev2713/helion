@@ -407,6 +407,7 @@ export default function Fleet() {
         title={t.fleet.title}
         titleEmphasis={t.fleet.titleEmphasis}
         intro={t.fleet.intro}
+        scene={SCENE_NO[SECTION_ID.fleet]}
         className="mb-10 md:mb-16"
       />
 

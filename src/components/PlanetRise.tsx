@@ -9,6 +9,8 @@ const TEX_H = 512
 /** Texture scroll speed (screen px/s) — one revolution takes minutes. */
 const SPIN_SPEED = 4
 const MAX_DPR = 2
+/** Where the top of the disc sits within the layer, as a share of its height. */
+const LIMB_Y = 0.3
 /** Mars dust colours for the rim/atmosphere — literal warm rgba values on
  *  purpose: this is imagery colour (like the footage), not a UI token. */
 const DUST = '224, 154, 106'
@@ -159,9 +161,20 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      radius = Math.min(width * 0.44, height * 1.35)
+
+      /*
+       * Compose the limb, don't let it fall where it may.
+       *
+       * The radius used to be derived from the viewport and the centre pushed
+       * below the canvas by a fixed share of it, so on a tall phone the disc
+       * ended up almost entirely off-screen — Mars read as a thin smear under
+       * the credits. Now the horizon is placed first: the top of the disc
+       * always sits at LIMB_Y of the layer's height, and the radius is chosen
+       * to be wide enough that the arc reads as a planet rather than a hill.
+       */
+      radius = Math.max(width * 0.85, height * 1.1)
       cx = width / 2
-      cy = height + radius * 0.32
+      cy = height * LIMB_Y + radius
 
       buildTexture()
       bodyShade = ctx.createLinearGradient(0, cy - radius, 0, cy + radius * 0.25)
@@ -221,7 +234,7 @@ export default function PlanetRise({ progress, reduced }: PlanetRiseProps) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-[46vh] overflow-hidden md:h-[60vh]"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-[62vh] overflow-hidden md:h-[72vh]"
     >
       <canvas
         ref={canvasRef}

@@ -213,6 +213,20 @@ div[id] {
   font-size: clamp(1.75rem, 1rem + 4.6vw, 5.4rem);
 }
 
+/*
+ * Scroll-tensioned title: the tracking is drawn open as `--tension` goes 0 → 1,
+ * so the type is visibly stretched into place rather than fading in.
+ *
+ * The responsive clamp is kept and multiplied, instead of being replaced by a
+ * fixed value — a flat 0.16em would read well on a monitor and tear long
+ * Russian words apart on a 375px phone.
+ */
+.title-tension {
+  letter-spacing: calc(
+    clamp(0.08em, 0.05em + 0.7vw, 0.2em) * (0.3 + 0.7 * var(--tension, 1))
+  );
+}
+
 /* Film-gate flash left behind when the menu shutter slams closed */
 @keyframes gate-flash {
   0% {

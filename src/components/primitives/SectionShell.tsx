@@ -2,7 +2,6 @@ import { type ReactNode } from 'react'
 import { useReducedMotion, useViewportProgress } from '../../lib/hooks'
 import { mapRange } from '../../lib/easing'
 import GhostScene from './GhostScene'
-import ChapterRule from './ChapterRule'
 
 type Atmosphere = 'accent' | 'steel' | 'mars' | 'none'
 
@@ -75,8 +74,8 @@ export default function SectionShell({
         </div>
       )}
       {scene && <GhostScene scene={scene} progress={progress} />}
-      {/* Arrival beat: the chapter is struck onto the frame before it is read */}
-      {scene && <ChapterRule scene={scene} className="mb-10 md:mb-14" />}
+      {/* The chapter marker lives on the heading's tension gauge — see
+          TensionTitle — so nothing is drawn here. */}
       {children}
     </section>
   )

@@ -186,6 +186,11 @@ export default function Contact() {
         </LineReveal>
       </div>
 
+      {/* Room reserved for the horizon. Without it the credits sat straight on
+          top of the rising limb and Mars was reduced to a smear at the very
+          bottom of the page. */}
+      <div aria-hidden className="h-[34vh] shrink-0 md:h-[40vh]" />
+
       <Credits />
     </section>
   )

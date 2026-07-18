@@ -303,6 +303,7 @@ export default function Missions() {
         title={t.missions.title}
         titleEmphasis={t.missions.titleEmphasis}
         intro={t.missions.intro}
+        scene={SCENE_NO[SECTION_ID.missions]}
         className="mb-10 md:mb-20"
       />
 

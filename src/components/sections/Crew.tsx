@@ -92,6 +92,7 @@ export default function Crew() {
         title={t.crew.title}
         titleEmphasis={t.crew.titleEmphasis}
         intro={t.crew.intro}
+        scene={SCENE_NO[SECTION_ID.crew]}
         className="mb-10 md:mb-20"
       />
 
