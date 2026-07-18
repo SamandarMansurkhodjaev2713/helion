@@ -16,8 +16,21 @@ const FALLBACK_DURATION = 18.0833
 const FRAME_SCALE_FROM = 0.85
 /** Scroll progress at which the mobile push-in reaches full frame. */
 const FRAME_ZOOM_END = 0.3
+
+/*
+ * Closing beats of the hero, as fractions of its pinned scroll.
+ *
+ * These used to overlap: the finale copy revealed across 0.92–1.00 while the
+ * cut ran 0.96–1.00, so the last line landed exactly as the frame went down
+ * and the shot was never actually *held*. They are now three distinct beats —
+ * reveal, hold, cut — and the pinned section is longer, so the hold is real
+ * scrolling distance rather than a rounding error.
+ */
+/** Finale copy reveals across this window. */
+const FINALE_START = 0.9
+const FINALE_SPAN = 0.05
 /** Progress at which the closing cut to the next scene begins. */
-const CUT_START = 0.96
+const CUT_START = 0.975
 
 /** Map pinned-section progress (0–1) to video time per the story script. */
 function progressToTime(p: number, duration: number): number {
@@ -226,8 +239,8 @@ export default function ScrollyHero() {
   const hpB = clamp01((p - 0.4) / 0.12)
   const fadeB = p < 0.59 ? 1 : 1 - clamp01((p - 0.59) / 0.06)
 
-  // Block C: cascade pours in across p 0.92→1.0
-  const hpC = clamp01((p - 0.92) / 0.08)
+  // Block C: the finale settles well before the cut, then simply holds.
+  const hpC = clamp01((p - FINALE_START) / FINALE_SPAN)
 
   // Mobile cinema frame: footage starts pulled back inside a ticked frame, the
   // camera pushes in to full bleed across the first scroll stretch.
@@ -239,42 +252,58 @@ export default function ScrollyHero() {
   const cut = clamp01((p - CUT_START) / (1 - CUT_START))
 
   return (
-    <div ref={wrapperRef} id={SECTION_ID.hero} className="relative h-[600vh]">
+    <div ref={wrapperRef} id={SECTION_ID.hero} className="relative h-[720vh]">
       <div className="sticky top-0 h-[100dvh] overflow-hidden bg-void grain vignette">
-        {/* Footage layer — breathes at rest, scaled back into a frame on mobile */}
+        {/*
+          Footage. The frame scale and the idle breathing live on two different
+          elements on purpose: a CSS animation on `transform` outranks an inline
+          `transform` in the cascade, so putting both on one element let the
+          breathing silently erase the mobile cinema frame — the footage snapped
+          to full size while the ticked border stayed behind, which is what
+          "broke" the astronaut. Nested, they simply compose.
+        */}
         <div
           className="absolute inset-0 will-change-transform"
-          style={{
-            transform: `scale(${frameScale.toFixed(4)})`,
-            // The idle frame never sits perfectly still: a slow, shallow push.
-            animation: reduced || p > 0.02 ? undefined : 'hero-breathe 11s ease-in-out infinite',
-          }}
+          style={{ transform: `scale(${frameScale.toFixed(4)})` }}
         >
-          <video
-            ref={videoRef}
-            src={asset('scrub.mp4')}
-            poster={asset('poster_start.jpg')}
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-
-          {/* Idle intro: ambient loop of the first frame, above scrub, below text */}
-          <video
-            ref={introRef}
-            src={asset('intro_loop.mp4')}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="absolute inset-0 z-20 h-full w-full object-cover object-center"
+          <div
+            className="absolute inset-0"
             style={{
-              opacity: introOn ? 1 : 0,
-              transition: introOn ? 'opacity 0.6s ease-in-out' : 'opacity 0.4s ease-out',
+              // The held frame never sits perfectly still: a slow, shallow push.
+              // Desktop only — the phone already has the push-in, and one less
+              // animated layer over a scrubbing video keeps it smooth.
+              animation:
+                reduced || isMobile || p > 0.02
+                  ? undefined
+                  : 'hero-breathe 11s ease-in-out infinite',
             }}
-          />
+          >
+            <video
+              ref={videoRef}
+              src={asset('scrub.mp4')}
+              poster={asset('poster_start.jpg')}
+              muted
+              playsInline
+              preload="auto"
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+
+            {/* Idle intro: ambient loop of the first frame, above scrub, below text */}
+            <video
+              ref={introRef}
+              src={asset('intro_loop.mp4')}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              className="absolute inset-0 z-20 h-full w-full object-cover object-center"
+              style={{
+                opacity: introOn ? 1 : 0,
+                transition: introOn ? 'opacity 0.6s ease-in-out' : 'opacity 0.4s ease-out',
+              }}
+            />
+          </div>
 
           {/* Frame border + corner ticks, visible while the camera is pulled back */}
           {isMobile && (
@@ -291,8 +320,10 @@ export default function ScrollyHero() {
           )}
         </div>
 
-        {/* Dust in the key light — only while the frame is held at rest */}
-        <HeroAtmosphere className="absolute inset-0 z-20 h-full w-full transition-opacity duration-700" />
+        {/* Dust in the key light — desktop only, for the same reason */}
+        {!isMobile && (
+          <HeroAtmosphere className="absolute inset-0 z-20 h-full w-full transition-opacity duration-700" />
+        )}
 
         {/* Cold glow behind the finale figure (mirrors --accent) */}
         <div
