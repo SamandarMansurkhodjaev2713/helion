@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { SCENE_NO, SECTION_ID } from '../../lib/constants'
+import { SCENE_NO, SECTION_ID, asset } from '../../lib/constants'
 import { clamp01, easeOutCubic } from '../../lib/easing'
 import CineButton from '../primitives/CineButton'
 import HeroFrames from './HeroFrames'
@@ -33,6 +33,14 @@ const BEATS = {
 const FRAME_SCALE_FROM = 0.85
 
 /**
+ * Scroll below which the hero counts as "at rest" and the idle loop plays.
+ * The sequence has not left its first frame yet at this point, so the loop and
+ * the still underneath it are the same picture and the crossfade has nothing to
+ * jump between.
+ */
+const IDLE_UNTIL = 0.004
+
+/**
  * The hero, cut for phones.
  *
  * This is the same footage the desktop cut scrubs and the same story script
@@ -45,7 +53,27 @@ const FRAME_SCALE_FROM = 0.85
 export default function MobileHero() {
   const { t } = useI18n()
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const introRef = useRef<HTMLVideoElement>(null)
   const [p, setP] = useState(0)
+
+  // The idle loop breathes over the first frame until the reader scrolls, and
+  // comes back — always from its own frame 0 — once they return to the top.
+  const introOn = p < IDLE_UNTIL
+  useEffect(() => {
+    const intro = introRef.current
+    if (!intro) return
+    if (introOn) {
+      intro.currentTime = 0
+      // Autoplay can be refused (low-power mode, a strict data saver). The
+      // still frame underneath is the same picture, so the hero simply reads
+      // as a held shot rather than a broken one.
+      intro.play().catch(() => undefined)
+      return
+    }
+    // Let the crossfade finish before freezing the loop, then stop decoding.
+    const timeout = window.setTimeout(() => intro.pause(), 450)
+    return () => window.clearTimeout(timeout)
+  }, [introOn])
 
   // One rAF-throttled scroll reader; paused whenever the hero is off screen.
   useEffect(() => {
@@ -111,6 +139,27 @@ export default function MobileHero() {
             position={footage}
             label={t.hero.footageAlt}
             className="absolute inset-0 h-full w-full"
+          />
+
+          {/* Idle loop over the first frame. Playing a small clip start to
+              finish is the one thing phones do well with video — it is seeking
+              they cannot do — so the shot is alive before the first scroll.
+              Cropped and encoded to match the sequence exactly (see
+              docs/animations.md), which is what makes the handoff invisible. */}
+          <video
+            ref={introRef}
+            src={asset('hero/intro_mobile.mp4')}
+            aria-hidden
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="absolute inset-0 z-20 h-full w-full object-cover object-center"
+            style={{
+              opacity: introOn ? 1 : 0,
+              transition: introOn ? 'opacity 0.6s ease-in-out' : 'opacity 0.4s ease-out',
+            }}
           />
 
           {/* The frame the camera pulls out of */}

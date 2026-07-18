@@ -71,7 +71,8 @@ bone #ECE6DA (текст) · ash #8B8578 (мета)
 ```
 hero      три версии монтажа (useHeroCut), сценарий один — hero/heroScript.ts:
           десктоп — scroll-scrub видео; тач/узкий — тот же дубль покадрово
-          (HeroFrames, 72 WebP, БЕЗ video в DOM); reduced-motion — статичный кадр
+          (HeroFrames, 72 WebP) + лёгкая idle-петля видео (seek нельзя,
+          линейное воспроизведение можно); reduced-motion — статичный кадр
 missions  леджер-досье: полноширинные строки с аккордеон-раскрытием
 fleet     тех-лист: подчёркнутые табы + hairline-таблица + схема в TiltCard
 route     desktop — pinned горизонтальный таймлайн + линия-траектория;
