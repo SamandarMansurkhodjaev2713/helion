@@ -118,7 +118,7 @@ function Credits() {
           href={`#${SECTION_ID.hero}`}
           data-cursor="link"
           data-cursor-label={t.footer.backToTop}
-          className="group inline-flex items-center justify-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-bone/45 transition-colors duration-300 hover:text-bone"
+          className="tap-target group inline-flex items-center justify-center gap-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-bone/45 transition-colors duration-300 hover:text-bone"
         >
           {t.footer.backToTop}
           <span className="flex h-7 w-7 items-center justify-center border border-white/15 transition-transform duration-300 group-hover:-translate-y-0.5">
@@ -134,7 +134,7 @@ function Credits() {
           target="_blank"
           rel="noopener noreferrer"
           data-cursor="link"
-          className="transition-colors duration-300 hover:text-accent"
+          className="tap-target py-1 transition-colors duration-300 hover:text-accent"
         >
           {t.footer.author}
         </a>

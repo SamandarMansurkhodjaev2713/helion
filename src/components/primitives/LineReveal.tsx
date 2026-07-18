@@ -22,6 +22,10 @@ interface LineRevealProps {
  * This is deliberately the *only* text entrance used across the site — a single
  * recognisable move reads as authorship, where a mix of fades and slides reads
  * as a template. Under reduced motion children render plainly, unwrapped.
+ *
+ * The entrance is driven by `useInView`, which resolves synchronously against
+ * the element's rect on mount — so a reload or deep link that lands mid-page
+ * shows its content immediately instead of waiting for an observer callback.
  */
 export default function LineReveal({
   children,

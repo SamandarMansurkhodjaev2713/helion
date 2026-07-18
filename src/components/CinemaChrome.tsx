@@ -40,6 +40,9 @@ const MENU_PREVIEW: Record<string, string> = {
   [SECTION_ID.contact]: 'mars_2k.jpg',
 }
 
+/** Ties the menu button to the shutter it discloses, for assistive tech. */
+const MENU_PANEL_ID = 'menu-shutter'
+
 const pad2 = (n: number) => n.toString().padStart(2, '0')
 
 /** Format seconds as HH:MM:SS for the mission-elapsed clock. */
@@ -77,7 +80,7 @@ function LanguageSwitch() {
             }}
             aria-pressed={code === locale}
             data-cursor="link"
-            className={`py-2 uppercase tracking-[0.2em] transition-colors duration-300 ${
+            className={`tap-target px-1.5 py-3 uppercase tracking-[0.2em] transition-colors duration-300 ${
               code === locale ? 'text-accent' : 'text-bone/40 hover:text-bone'
             }`}
           >
@@ -342,6 +345,7 @@ export default function CinemaChrome() {
             type="button"
             onClick={() => (menuOpen ? closeMenu() : openMenu())}
             aria-expanded={menuOpen}
+            aria-controls={MENU_PANEL_ID}
             aria-label={t.nav.menuLabel}
             data-cursor="link"
             className="group flex h-11 items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.25em] text-bone transition-colors duration-300 hover:text-accent"
@@ -398,8 +402,14 @@ export default function CinemaChrome() {
       )}
 
       {/* ——— Full-screen menu: film-gate shutter + scene slates ——— */}
+      {/* The shutter stays mounted so it can animate, so while it is parked it
+          must also leave the tab order — `aria-hidden` alone would hide it from
+          screen readers while keyboard focus still fell into ten invisible
+          links. `inert` takes the whole subtree out at once. */}
       <div
+        id={MENU_PANEL_ID}
         aria-hidden={!menuOpen}
+        inert={menuOpen ? undefined : ''}
         className={`fixed inset-0 z-overlay overflow-hidden ${
           menuOpen ? 'pointer-events-auto' : 'pointer-events-none'
         }`}

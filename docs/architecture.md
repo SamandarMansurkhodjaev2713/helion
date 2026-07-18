@@ -13,7 +13,7 @@ main.tsx
       ├─ <StarField/>           // fixed canvas-фон (z-0)
       ├─ <Nav/>                 // fixed, телеметрия + язык + меню
       ├─ <main z-10>
-      │  ├─ <ScrollyHero/> | <StaticHero/>   // выбор по reduced-motion
+      │  ├─ <ScrollyHero/> | <MobileHero/> | <StaticHero/>  // useHeroCut()
       │  ├─ <Missions/>
       │  ├─ <Fleet/>
       │  ├─ <Route/>

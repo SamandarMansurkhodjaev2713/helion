@@ -39,9 +39,10 @@ award-grade motion — built with a deliberately light stack (~73 KB JS gzip).
   спектакль или облегчённый монтаж; на телефоне добавлены тактильные отклики.
 - **Кино-каунтдаун при входе** (`FilmLeader`) — 3-2-1 в стилистике ракорда плёнки;
   показывается раз за сессию, пропускается любым вводом, off при reduced-motion.
-- **Scroll-scrubbed видео-хиро** — прокрутка управляет `currentTime` видео с инерцией;
-  на мобильных кадр начинается отдалённым в тикованной кино-рамке (scale 0.85) и
-  «камера наезжает» до полного кадра по скроллу.
+- **Хиро в трёх монтажах** — на десктопе прокрутка управляет `currentTime` видео с
+  инерцией. На телефоне видео нет вовсе: скраб 26-мегабайтного файла кладёт
+  мобильный декодер, поэтому там идёт последовательность постеров (~250 КБ) с той
+  же раскадровкой. При `prefers-reduced-motion` — статичный кадр.
 - **Полноэкранное меню** — гигантские сверхтонкие пункты со scramble-декодированием,
   стаггер-появление, превью-подписи, телеметрия — одинаково на десктопе и мобиле.
 - **Живой canvas-фон** (`StarField`) — дрейф звёзд, растягивающихся в warp-полосы по
@@ -99,7 +100,8 @@ helion/
 │  ├─ lib/                 # константы, easing-математика, хуки
 │  └─ components/
 │     ├─ HudCursor / StarField / Nav / Footer
-│     ├─ ScrollyHero / StaticHero (reduced-motion fallback)
+│     ├─ hero/              # MobileHero + общий словарь движения heroMotion
+│     ├─ ScrollyHero (десктоп) / StaticHero (reduced-motion)
 │     ├─ primitives/       # MagneticButton, TiltCard, Reveal, ScrambleText…
 │     └─ sections/         # Missions, Fleet, Route, Crew, Contact
 ├─ docs/                   # проектная документация

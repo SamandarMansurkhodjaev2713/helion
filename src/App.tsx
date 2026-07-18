@@ -2,13 +2,14 @@ import { useEffect } from 'react'
 import Lenis from 'lenis'
 import { I18nProvider } from './i18n'
 import { SoundProvider } from './lib/SoundProvider'
-import { usePointerFine, useReducedMotion } from './lib/hooks'
+import { useMediaQuery, usePointerFine, useReducedMotion } from './lib/hooks'
 import FilmLeader from './components/FilmLeader'
 import HudCursor from './components/HudCursor'
 import StarField from './components/StarField'
 import SceneLight from './components/SceneLight'
 import CinemaChrome from './components/CinemaChrome'
 import ScrollyHero from './components/ScrollyHero'
+import MobileHero from './components/hero/MobileHero'
 import StaticHero from './components/StaticHero'
 import Missions from './components/sections/Missions'
 import Fleet from './components/sections/Fleet'
@@ -36,9 +37,25 @@ function useLenis(enabled: boolean) {
   }, [enabled])
 }
 
+/**
+ * Which cut of the hero this device gets.
+ *
+ * Video scrubbing means writing `currentTime` every frame; a phone cannot seek
+ * inside a 26 MB file at that rate and the picture simply stalls, so handsets
+ * get a plate sequence that tells the same story with no seeking at all.
+ */
+function useHeroCut(): 'static' | 'mobile' | 'scrub' {
+  const reduced = useReducedMotion()
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const coarse = useMediaQuery('(pointer: coarse)')
+  if (reduced) return 'static'
+  return narrow || coarse ? 'mobile' : 'scrub'
+}
+
 export default function App() {
   const reducedMotion = useReducedMotion()
   const pointerFine = usePointerFine()
+  const heroCut = useHeroCut()
   useLenis(!reducedMotion && pointerFine)
 
   return (
@@ -52,7 +69,9 @@ export default function App() {
         <CinemaChrome />
 
         <main className="relative z-10">
-          {reducedMotion ? <StaticHero /> : <ScrollyHero />}
+          {heroCut === 'static' && <StaticHero />}
+          {heroCut === 'mobile' && <MobileHero />}
+          {heroCut === 'scrub' && <ScrollyHero />}
           <Missions />
           <Fleet />
           <Route />
