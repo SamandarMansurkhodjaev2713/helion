@@ -130,6 +130,8 @@ export interface Dictionary {
     voyageLabel: string
     voyageYear: string
     scrollHint: string
+    /** Describes the hero footage for readers who cannot see it. */
+    footageAlt: string
     missionTag: string
     bLine1: string
     bEmphasisA: string

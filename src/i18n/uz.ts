@@ -67,6 +67,7 @@ export const uz: Dictionary = {
     voyageLabel: 'Birinchi reys',
     voyageYear: '2027',
     scrollHint: 'Pastga suring',
+    footageAlt: 'Ochiq kosmosdagi astronavt: kamera dubulgʻaga yaqinlashadi va yana uzoqlashib, siluetni sayyora qarshisida yolgʻiz qoldiradi',
     missionTag: 'Missiya 04 — Birinchi aloqa',
     bLine1: 'U buni',
     bEmphasisA: 'birinchi',

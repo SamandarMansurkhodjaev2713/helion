@@ -1,22 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import { MOTION, SCENE_NO, SECTION_ID, asset } from '../lib/constants'
-import { clamp01, easeOutCubic } from '../lib/easing'
-import { useMediaQuery, useReducedMotion } from '../lib/hooks'
+import { clamp01 } from '../lib/easing'
+import { useReducedMotion } from '../lib/hooks'
 import CineButton from './primitives/CineButton'
 import HeroAtmosphere from './hero/HeroAtmosphere'
-import { FrameTick, MaskLine, Stat, rev, revB } from './hero/heroMotion'
+import { MaskLine, Stat, rev, revB } from './hero/heroMotion'
+import { DESKTOP_SCRIPT, FOOTAGE_SECONDS, footagePosition } from './hero/heroScript'
 
-/** Timestamp (s) where clip 1 (push-in to helmet) ends inside scrub.mp4. */
-export const CLIP1_END = 8.0417
-/** Full duration of scrub.mp4 — fallback until metadata loads. */
-const FALLBACK_DURATION = 18.0833
-
-/** Mobile cinema frame: the footage starts pulled back to this scale and the
- *  "camera" pushes in to full frame across the first stretch of scroll. */
-const FRAME_SCALE_FROM = 0.85
-/** Scroll progress at which the mobile push-in reaches full frame. */
-const FRAME_ZOOM_END = 0.3
+/** Duration to assume until the video's own metadata lands. */
+const FALLBACK_DURATION = FOOTAGE_SECONDS
 
 /*
  * Closing beats of the hero, as fractions of its pinned scroll.
@@ -33,13 +26,9 @@ const FINALE_SPAN = 0.05
 /** Progress at which the closing cut to the next scene begins. */
 const CUT_START = 0.975
 
-/** Map pinned-section progress (0–1) to video time per the story script. */
+/** Map pinned-section progress (0–1) to video time per the shared story script. */
 function progressToTime(p: number, duration: number): number {
-  if (p <= 0.01) return 0
-  if (p < 0.4) return ((p - 0.01) / 0.39) * CLIP1_END
-  if (p < 0.63) return CLIP1_END
-  if (p < 0.92) return CLIP1_END + ((p - 0.63) / 0.29) * (duration - CLIP1_END)
-  return duration
+  return footagePosition(p, DESKTOP_SCRIPT) * duration
 }
 
 /** Optical-sight scale down the right edge; the runner tracks hero progress. */
@@ -75,7 +64,6 @@ function SightScale({ progress }: { progress: number }) {
 
 export default function ScrollyHero() {
   const { t } = useI18n()
-  const isMobile = useMediaQuery('(max-width: 767px)')
   const reduced = useReducedMotion()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -183,40 +171,21 @@ export default function ScrollyHero() {
   // Block C: the finale settles well before the cut, then simply holds.
   const hpC = clamp01((p - FINALE_START) / FINALE_SPAN)
 
-  // Mobile cinema frame: footage starts pulled back inside a ticked frame, the
-  // camera pushes in to full bleed across the first scroll stretch.
-  const frameZoom = easeOutCubic(clamp01(p / FRAME_ZOOM_END))
-  const frameScale = isMobile ? FRAME_SCALE_FROM + (1 - FRAME_SCALE_FROM) * frameZoom : 1
-  const frameFade = isMobile ? 1 - frameZoom : 0
-
   // The closing cut: the frame darkens away as scene 02 is struck through it.
   const cut = clamp01((p - CUT_START) / (1 - CUT_START))
 
   return (
     <div ref={wrapperRef} id={SECTION_ID.hero} className="relative h-[720vh]">
       <div className="sticky top-0 h-[100dvh] overflow-hidden bg-void grain vignette">
-        {/*
-          Footage. The frame scale and the idle breathing live on two different
-          elements on purpose: a CSS animation on `transform` outranks an inline
-          `transform` in the cascade, so putting both on one element let the
-          breathing silently erase the mobile cinema frame — the footage snapped
-          to full size while the ticked border stayed behind, which is what
-          "broke" the astronaut. Nested, they simply compose.
-        */}
-        <div
-          className="absolute inset-0 will-change-transform"
-          style={{ transform: `scale(${frameScale.toFixed(4)})` }}
-        >
+        {/* Footage. Phones never reach this cut — they get `MobileHero`, which
+            plays the same take as a frame sequence. */}
+        <div className="absolute inset-0">
           <div
             className="absolute inset-0"
             style={{
               // The held frame never sits perfectly still: a slow, shallow push.
-              // Desktop only — the phone already has the push-in, and one less
-              // animated layer over a scrubbing video keeps it smooth.
               animation:
-                reduced || isMobile || p > 0.02
-                  ? undefined
-                  : 'hero-breathe 11s ease-in-out infinite',
+                reduced || p > 0.02 ? undefined : 'hero-breathe 11s ease-in-out infinite',
             }}
           >
             <video
@@ -246,25 +215,10 @@ export default function ScrollyHero() {
             />
           </div>
 
-          {/* Frame border + corner ticks, visible while the camera is pulled back */}
-          {isMobile && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 z-30 border border-white/15"
-              style={{ opacity: frameFade }}
-            >
-              <FrameTick position="-left-px -top-px" />
-              <FrameTick position="-right-px -top-px" />
-              <FrameTick position="-left-px -bottom-px" />
-              <FrameTick position="-right-px -bottom-px" />
-            </div>
-          )}
         </div>
 
-        {/* Dust in the key light — desktop only, for the same reason */}
-        {!isMobile && (
-          <HeroAtmosphere className="absolute inset-0 z-20 h-full w-full transition-opacity duration-700" />
-        )}
+        {/* Dust in the key light */}
+        <HeroAtmosphere className="absolute inset-0 z-20 h-full w-full transition-opacity duration-700" />
 
         {/* Cold glow behind the finale figure (mirrors --accent) */}
         <div

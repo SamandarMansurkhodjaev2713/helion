@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { SCENE_NO, SECTION_ID, asset } from '../../lib/constants'
-import { clamp01, easeOutCubic, mapRange } from '../../lib/easing'
+import { SCENE_NO, SECTION_ID } from '../../lib/constants'
+import { clamp01, easeOutCubic } from '../../lib/easing'
 import CineButton from '../primitives/CineButton'
+import HeroFrames from './HeroFrames'
+import { MOBILE_SCRIPT, footagePosition } from './heroScript'
 import { FrameTick, MaskLine, Stat, rev, revB } from './heroMotion'
 
 /**
@@ -31,20 +33,14 @@ const BEATS = {
 const FRAME_SCALE_FROM = 0.85
 
 /**
- * The hero, rebuilt for phones as a sequence of plates rather than a scrubbed
- * video.
+ * The hero, cut for phones.
  *
- * Scrubbing works by writing `currentTime` every frame, and on a phone that
- * means asking the decoder to seek inside a 26 MB H.264 file sixty times a
- * second. Handsets cannot do it: the picture stalls, and what the reader
- * experiences is a hero that never loads. Since the story only ever needed two
- * images — the figure close, then the figure small against a world — this build
- * uses the two posters we already ship (about 250 KB together, no seeking at
- * all) and moves the camera itself: each plate drifts and scales under the
- * scroll, and the two cross-dissolve at the act break.
- *
- * The text beats, the cinema frame and the closing cut are shared with the
- * desktop cut, so the two are the same film shot on different stock.
+ * This is the same footage the desktop cut scrubs and the same story script
+ * (`MOBILE_SCRIPT`) — the figure approached, held, then left small against a
+ * world. Only the projector differs: a phone cannot seek inside the video fast
+ * enough to scrub it, so the take is played back as a pre-decoded frame
+ * sequence (see `HeroFrames`). Nothing about the shot is simplified; it is the
+ * same film, threaded through a projector the device can actually turn.
  */
 export default function MobileHero() {
   const { t } = useI18n()
@@ -92,13 +88,9 @@ export default function MobileHero() {
   const frameScale = FRAME_SCALE_FROM + (1 - FRAME_SCALE_FROM) * frameZoom
   const frameFade = 1 - frameZoom
 
-  // The near plate drifts up and pushes in; the far plate settles as it arrives.
-  const nearScale = 1 + p * 0.16
-  const nearShift = mapRange(p, 0, 1, 0, -7)
-  const farScale = mapRange(p, 0.5, 1, 1.14, 1)
-  const farShift = mapRange(p, 0.5, 1, 4, -2)
-  // Act break: the two plates cross-dissolve.
-  const farOpacity = clamp01(mapRange(p, 0.52, 0.7, 0, 1))
+  // The take itself carries the push-in and the pull-back — the only camera
+  // move added here is the cinema frame opening out at the very start.
+  const footage = footagePosition(p, MOBILE_SCRIPT)
 
   // — Acts —
   const actI = p < BEATS.titleOut
@@ -115,23 +107,10 @@ export default function MobileHero() {
           className="absolute inset-0 will-change-transform"
           style={{ transform: `scale(${frameScale.toFixed(4)})` }}
         >
-          <img
-            src={asset('poster_start.jpg')}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover object-center will-change-transform"
-            style={{ transform: `scale(${nearScale.toFixed(3)}) translateY(${nearShift.toFixed(2)}%)` }}
-          />
-          <img
-            src={asset('poster_end.jpg')}
-            alt=""
-            aria-hidden
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover object-center will-change-transform"
-            style={{
-              opacity: farOpacity,
-              transform: `scale(${farScale.toFixed(3)}) translateY(${farShift.toFixed(2)}%)`,
-            }}
+          <HeroFrames
+            position={footage}
+            label={t.hero.footageAlt}
+            className="absolute inset-0 h-full w-full"
           />
 
           {/* The frame the camera pulls out of */}

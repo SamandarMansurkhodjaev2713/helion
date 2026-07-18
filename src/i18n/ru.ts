@@ -67,6 +67,7 @@ export const ru: Dictionary = {
     voyageLabel: 'Первый рейс',
     voyageYear: '2027',
     scrollHint: 'Листайте вниз',
+    footageAlt: 'Астронавт в открытом космосе: камера подходит к шлему и снова отдаляется, оставляя фигуру одну против планеты',
     missionTag: 'Миссия 04 — Первый контакт',
     bLine1: 'Он увидел',
     bEmphasisA: 'это',

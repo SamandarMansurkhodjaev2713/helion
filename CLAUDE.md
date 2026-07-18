@@ -76,9 +76,9 @@ bone #ECE6DA (текст) · ash #8B8578 (мета)
 Сайт стилизован под фильм: letterbox-хром, таймкод, титры. Секции:
 
 ```
-hero      три версии монтажа (useHeroCut): десктоп — scroll-scrub видео;
-          тач/узкий — последовательность постеров, БЕЗ video в DOM;
-          reduced-motion — статичный кадр
+hero      три версии монтажа (useHeroCut), сценарий один — hero/heroScript.ts:
+          десктоп — scroll-scrub видео; тач/узкий — тот же дубль покадрово
+          (HeroFrames, 72 WebP, БЕЗ video в DOM); reduced-motion — статичный кадр
 missions  леджер-досье: полноширинные строки с аккордеон-раскрытием
 fleet     тех-лист: подчёркнутые табы + hairline-таблица + схема в TiltCard
 route     desktop — pinned горизонтальный таймлайн + линия-траектория;
